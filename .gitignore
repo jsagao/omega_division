@@ -1,0 +1,20 @@
+# Node
+node_modules/
+client/node_modules/
+*.log
+
+# Python
+backend/.venv/
+__pycache__/
+*.pyc
+
+# Local DB
+backend/blog.db
+
+# Env
+*.env
+
+# Build
+dist/
+build/
+.vite/

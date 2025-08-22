@@ -1,0 +1,133 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Let Tailwind control colors via dark mode */
+body {
+  @apply bg-white text-gray-900 dark:bg-gray-950 dark:text-gray-100;
+  width: 100vw;
+  overflow-x: hidden;
+  font-family: "Inter", sans-serif;
+}
+
+.ql-container {
+  border: none !important;
+}
+
+/* Constrain all images inside the Quill editor */
+.ql-editor img {
+  display: block;
+  max-width: 720px; /* set your fixed width */
+  width: 100%;
+  height: auto;
+  margin: 1rem auto; /* centered + spacing */
+}
+
+.ql-toolbar {
+  border: none !important;
+}
+
+/* Viewer styles for Quill-formatted HTML */
+.post-content .ql-align-center {
+  text-align: center;
+}
+.post-content .ql-align-right {
+  text-align: right;
+}
+.post-content .ql-align-justify {
+  text-align: justify;
+}
+
+/* Indents (LTR) */
+.post-content .ql-indent-1 {
+  padding-left: 3em;
+}
+.post-content .ql-indent-2 {
+  padding-left: 6em;
+}
+.post-content .ql-indent-3 {
+  padding-left: 9em;
+}
+.post-content .ql-indent-4 {
+  padding-left: 12em;
+}
+.post-content .ql-indent-5 {
+  padding-left: 15em;
+}
+.post-content .ql-indent-6 {
+  padding-left: 18em;
+}
+.post-content .ql-indent-7 {
+  padding-left: 21em;
+}
+.post-content .ql-indent-8 {
+  padding-left: 24em;
+}
+.post-content .ql-indent-9 {
+  padding-left: 27em;
+}
+
+/* Indents (RTL) */
+.post-content .ql-direction-rtl.ql-align-right {
+  text-align: left;
+}
+.post-content .ql-indent-1.ql-direction-rtl {
+  padding-right: 3em;
+}
+.post-content .ql-indent-2.ql-direction-rtl {
+  padding-right: 6em;
+}
+.post-content .ql-indent-3.ql-direction-rtl {
+  padding-right: 9em;
+}
+.post-content .ql-indent-4.ql-direction-rtl {
+  padding-right: 12em;
+}
+.post-content .ql-indent-5.ql-direction-rtl {
+  padding-right: 15em;
+}
+.post-content .ql-indent-6.ql-direction-rtl {
+  padding-right: 18em;
+}
+.post-content .ql-indent-7.ql-direction-rtl {
+  padding-right: 21em;
+}
+.post-content .ql-indent-8.ql-direction-rtl {
+  padding-right: 24em;
+}
+.post-content .ql-indent-9.ql-direction-rtl {
+  padding-right: 27em;
+}
+
+/* Lists look tidy */
+.post-content ol {
+  list-style: decimal;
+  padding-left: 1.25rem;
+}
+.post-content ul {
+  list-style: disc;
+  padding-left: 1.25rem;
+}
+
+/* Blockquotes & code */
+.post-content blockquote {
+  border-left: 4px solid #e5e7eb; /* gray-200 */
+  padding-left: 1rem;
+  color: #6b7280; /* gray-500 */
+  margin: 1rem 0;
+}
+.post-content pre {
+  background: #0f172a; /* slate-900-ish */
+  color: #e5e7eb;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+}
+
+/* Images inside content */
+.post-content img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 1rem auto;
+}

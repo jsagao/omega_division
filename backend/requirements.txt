@@ -1,0 +1,11 @@
+fastapi
+uvicorn[standard]
+sqlmodel
+sqlalchemy
+httpx
+feedparser
+beautifulsoup4
+python-multipart
+psycopg[binary]
+python-dotenv
+yfinance
