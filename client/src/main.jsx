@@ -1,8 +1,7 @@
 // src/main.jsx
 import "./index.css";
-import { StrictMode } from "react";
+import { StrictMode, Suspense, lazy } from "react";
 import { createRoot } from "react-dom/client";
-
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 
 import MainLayout from "./layouts/MainLayout.jsx";
@@ -12,32 +11,41 @@ import Write from "./routes/Write.jsx";
 import LoginPage from "./routes/LoginPage.jsx";
 import RegisterPage from "./routes/RegisterPage.jsx";
 import PrimarySinglePost from "./routes/PrimarySinglePost.jsx";
-
 import About from "./routes/About.jsx";
 import { ClerkProvider } from "@clerk/clerk-react";
 import Portfolio from "./routes/Portfolio.jsx";
 import Shop from "./routes/Shop.jsx";
 import NewsHome from "./routes/NewsHome.jsx";
 
+// ✅ Lazy load EditPost instead of top-level await
+const EditPost = lazy(() => import("./routes/EditPost.jsx"));
+
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 if (!PUBLISHABLE_KEY) throw new Error("Missing Publishable Key");
 
 const router = createBrowserRouter([
   {
-    path: "/", // layout route
-    Component: MainLayout, // must render <Outlet /> inside
+    path: "/",
+    Component: MainLayout,
     children: [
-      { index: true, Component: HomePage }, // "/"
-      { path: "posts", Component: PostListPage }, // "/posts"
-      { path: "posts/:id", Component: PrimarySinglePost }, // "/posts/:id"
-      { path: "posts/:id/edit", Component: (await import("./routes/EditPost.jsx")).default }, // or a static import if you prefer
-      { path: "write", Component: Write }, // "/write"
-      { path: "login", Component: LoginPage }, // "/login"
-      { path: "register", Component: RegisterPage }, // "/register"
+      { index: true, Component: HomePage },
+      { path: "posts", Component: PostListPage },
+      { path: "posts/:id", Component: PrimarySinglePost },
+      {
+        path: "posts/:id/edit",
+        element: (
+          <Suspense fallback={<div>Loading...</div>}>
+            <EditPost />
+          </Suspense>
+        ),
+      },
+      { path: "write", Component: Write },
+      { path: "login", Component: LoginPage },
+      { path: "register", Component: RegisterPage },
       { path: "portfolio", Component: Portfolio },
       { path: "shop", Component: Shop },
-      { path: "news", Component: NewsHome }, // optional demo route
-      { path: "about", Component: About }, // "/about"
+      { path: "news", Component: NewsHome },
+      { path: "about", Component: About },
     ],
   },
 ]);
