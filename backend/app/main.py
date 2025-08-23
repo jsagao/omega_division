@@ -10,7 +10,7 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import SQLModel, Field, Session, create_engine, select
 from sqlalchemy import or_, func
-from .rss_finance_home import router as rss_router
+from rss_finance_home import router as rss_router
 import yfinance as yf
 
 load_dotenv() 
