@@ -208,7 +208,7 @@ export default function PrimarySinglePost() {
         </div>
 
         {/* Hero image */}
-        <div className="hidden lg:block w-full lg:w-2/5">
+        <div className="w-full lg:w-2/5 mt-4 lg:mt-0 order-[-1] lg:order-none">
           <Image
             src={heroSrc}
             alt={post.title || "Post Image"}
