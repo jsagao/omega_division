@@ -122,7 +122,7 @@ export default function FeaturedPosts() {
           onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && go(main.id)}
           className="md:w-1/3 self-start cursor-pointer outline-none focus:ring-2 focus:ring-indigo-500"
         >
-          <h2 className="mt-0 text-2xl md:text-[26px] lg:text-3xl font-bold text-white hover:underline">
+          <h2 className="mt-0 text-2xl md:text-[26px] lg:text-3xl font-bold text-black hover:underline">
             {main.title}
           </h2>
           <p className="mt-2 text-gray-600 text-sm md:text-base leading-relaxed">
