@@ -4,7 +4,7 @@ import MainCategories from "../component/MainCategories";
 import FeaturedPosts from "../component/FeaturedPosts";
 import PostList from "../component/PostList";
 import HeroStrip from "../component/HeroStrip.jsx";
-import TickerSidebar from "../component/TickerSidebar.jsx";
+// import TickerSidebar from "../component/TickerSidebar.jsx";
 
 // --- Page ---
 export default function HomePage() {
@@ -39,13 +39,13 @@ export default function HomePage() {
       </div>
 
       {/* Fixed right sidebar (desktop+) */}
-      <aside
+      {/* <aside
         className="hidden lg:block fixed right-0 top-16 md:top-20
                    h-[calc(100vh-4rem)] md:h-[calc(100vh-5rem)]
                    w-[240px]"
       >
         <TickerSidebar apiBase="http://127.0.0.1:8000" />
-      </aside>
+      </aside> */}
 
       {/* Main content — remove default right padding and match sidebar width */}
       <div className="relative mx-auto max-w-[1200px] pl-4 pr-0 lg:pr-[60px]">
