@@ -1,20 +1,16 @@
 # Node
 node_modules/
-client/node_modules/
+dist/
+.vite/
 *.log
 
 # Python
-backend/.venv/
 __pycache__/
 *.pyc
+.venv/
+.env
+*.sqlite
+blog.db
 
-# Local DB
-backend/blog.db
-
-# Env
-*.env
-
-# Build
-dist/
-build/
-.vite/
+# Build artifacts
+.DS_Store
