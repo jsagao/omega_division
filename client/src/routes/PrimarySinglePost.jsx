@@ -8,7 +8,7 @@ import Search from "../component/Search.jsx";
 import Comments from "../component/Comments.jsx";
 import ConfirmModal from "../component/ConfirmModal.jsx";
 import DOMPurify from "dompurify";
-import ReactQuill from "react-quill-new"; // 👈 Quill editor for appending updates
+import ReactQuill from "react-quill-new"; // Quill editor for appending updates
 import "react-quill-new/dist/quill.snow.css";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:8000";
@@ -19,20 +19,26 @@ const CATEGORY_IMAGES = {
   databases: "/featured3.jpeg",
   "search-engines": "/featured4.jpeg",
   marketing: "/featured5.jpeg",
+  // add normalized variants if you use them:
+  programming: "/featured2.jpeg",
+  "data-science": "/featured3.jpeg",
+  business: "/featured4.jpeg",
+  technology: "/featured5.jpeg",
+  travel: "/featured1.jpeg",
 };
 
 export default function PrimarySinglePost() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useUser();
-  const isAdmin = user?.publicMetadata?.role === "admin"; // 👈 admin gate
+  const isAdmin = user?.publicMetadata?.role === "admin"; // admin gate
 
   const [post, setPost] = useState(null);
   const [status, setStatus] = useState("loading"); // loading | ok | notfound | error
   const [open, setOpen] = useState(false); // confirm delete modal
   const [loadingDelete, setLoadingDelete] = useState(false);
 
-  // --- Append Update modal state ---
+  // Append Update modal state
   const [appendOpen, setAppendOpen] = useState(false);
   const [appendHtml, setAppendHtml] = useState("");
   const [appending, setAppending] = useState(false);
@@ -56,32 +62,16 @@ export default function PrimarySinglePost() {
     return () => ctrl.abort();
   }, [id]);
 
-  // Prefer cover → (if author matches current user) Clerk avatar → category fallback
+  // Prefer uploaded cover; otherwise use a normalized category fallback
   const heroSrc = useMemo(() => {
     if (!post) return "/featured2.jpeg";
 
-    // 1) explicit cover on the post
     const cover = (post.cover_image_url || "").trim();
     if (cover) return cover;
 
-    // 2) if the post author is the signed-in user, use their Clerk/Google avatar
-    const postAuthor = (post.author || "").toLowerCase().trim();
-    const meName = (
-      user?.fullName ||
-      user?.username ||
-      user?.primaryEmailAddress?.emailAddress ||
-      ""
-    )
-      .toLowerCase()
-      .trim();
-
-    const clerkAvatar = user?.imageUrl || user?.profileImageUrl;
-    if (clerkAvatar) return clerkAvatar;
-
-    // 3) category fallback
-    const key = (post.category || "").toLowerCase();
+    const key = (post.category || "").toLowerCase().replace(/\s+/g, "-");
     return CATEGORY_IMAGES[key] || "/featured2.jpeg";
-  }, [post, user]);
+  }, [post]);
 
   async function handleDelete() {
     try {
@@ -101,7 +91,7 @@ export default function PrimarySinglePost() {
     }
   }
 
-  // 👇 Append update (admin only)
+  // Append update (admin only)
   async function handleAppend() {
     const html = (appendHtml || "").trim();
     if (!html) return;
@@ -281,7 +271,7 @@ export default function PrimarySinglePost() {
             <div className="flex flex-col gap-4">
               <div className="flex items-center gap-4">
                 <Image
-                  src={user?.imageUrl || "/featured1.jpeg"} // 👈 fallback if no Google avatar
+                  src={user?.imageUrl || "/featured1.jpeg"} // viewer’s avatar (not the post’s author image)
                   alt="Author avatar"
                   className="w-12 h-12 rounded-full object-cover"
                   w="48"
@@ -319,7 +309,7 @@ export default function PrimarySinglePost() {
                   onDelete={() => setOpen(true)}
                 />
 
-                {/* NEW: Add Update (opens Quill modal) */}
+                {/* Add Update (opens Quill modal) */}
                 <div className="mt-3">
                   <button
                     onClick={() => setAppendOpen(true)}
@@ -376,7 +366,7 @@ export default function PrimarySinglePost() {
 
       <Comments postId={id} />
 
-      {/* --- Append Update Modal (admin only) --- */}
+      {/* Append Update Modal (admin only) */}
       {isAdmin && appendOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           {/* overlay */}
