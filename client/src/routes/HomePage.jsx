@@ -10,7 +10,7 @@ import HeroStrip from "../component/HeroStrip.jsx";
 export default function HomePage() {
   return (
     <div
-      className="mt-4 min-h-screen bg-gray-800 relative
+      className="mt-4 min-h-screen bg-white relative
                  bg-[radial-gradient(circle_at_top_left,_#e0e7ff_0%,_transparent_40%),radial-gradient(circle_at_bottom_right,_#fce7f3_0%,_transparent_40%)]"
     >
       {/* Decorative Ω at top-left */}
