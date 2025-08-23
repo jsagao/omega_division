@@ -50,7 +50,6 @@ export default function EditPost() {
   }
   const role = (user?.publicMetadata?.role || "public").toString().toLowerCase();
   if (!isSignedIn || role !== "admin") {
-    // Not allowed: kick back to the post view
     return <Navigate to={`/posts/${id}`} replace />;
   }
   // ---------------------------------
@@ -90,7 +89,7 @@ export default function EditPost() {
         setExcerpt(data.excerpt || stripHtml(data.content || data.description || "").slice(0, 220));
         setFeaturedSlot(data.featured_slot || "none");
         setFeaturedRank(typeof data.featured_rank === "number" ? String(data.featured_rank) : "");
-        setCoverUrl(data.cover_image_url || ""); // show current cover immediately
+        setCoverUrl(data.cover_image_url || "");
 
         setStatus("ok");
       } catch (e) {
@@ -154,15 +153,14 @@ export default function EditPost() {
         cloudName: CLOUD_NAME,
         uploadPreset: UPLOAD_PRESET,
       });
-      // optional friendly size for covers
       const url = withTransform(raw, { width: 1600, quality: 85, crop: "limit" });
       setCoverUrl(url);
-      setShowCoverPreview(true); // open big preview
+      setShowCoverPreview(true);
     } catch (err) {
       setErrorMsg(err.message || "Cover upload failed.");
     } finally {
       setCoverUploading(false);
-      e.target.value = ""; // reset file input
+      e.target.value = "";
     }
   }
   function removeCover() {
@@ -192,7 +190,7 @@ export default function EditPost() {
         description: (excerpt || "").trim(), // legacy sync
         featured_slot: featuredSlot,
         featured_rank: featuredRank ? Number(featuredRank) : null,
-        cover_image_url: coverUrl, // keep cover updated
+        cover_image_url: coverUrl,
       };
 
       const res = await fetch(`${API}/posts/${id}`, {
@@ -379,18 +377,24 @@ export default function EditPost() {
           </div>
         </div>
 
-        {/* Featured */}
+        {/* Featured (now includes "portfolio") */}
         <fieldset className="flex flex-wrap items-center gap-4">
           <legend className="text-gray-500 font-medium">Feature:</legend>
-          {["none", "main", "mini"].map((opt) => (
-            <label key={opt} className="flex items-center gap-2 text-sm">
+          {[
+            { value: "none", label: "None" },
+            { value: "main", label: "Main" },
+            { value: "mini", label: "Mini" },
+            { value: "portfolio", label: "Portfolio" },
+          ].map((opt) => (
+            <label key={opt.value} className="flex items-center gap-2 text-sm">
               <input
                 type="radio"
-                value={opt}
-                checked={featuredSlot === opt}
+                name="featured_slot"
+                value={opt.value}
+                checked={featuredSlot === opt.value}
                 onChange={(e) => setFeaturedSlot(e.target.value)}
               />
-              {opt}
+              {opt.label}
             </label>
           ))}
           <input
