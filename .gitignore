@@ -1,16 +1,32 @@
-# Node
+# --- Python ---
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.db
+*.sqlite3
+*.egg-info/
+.env
+.venv/
+blog.db
+
+# --- Node / Vite ---
 node_modules/
 dist/
 .vite/
 *.log
-
-# Python
-__pycache__/
-*.pyc
-.venv/
-.env
-*.sqlite
-blog.db
-
-# Build artifacts
+*.lock
+*.cache
 .DS_Store
+
+# --- OS / Editor junk ---
+Thumbs.db
+.DS_Store
+*.swp
+.idea/
+.vscode/
+*.iml
+
+# --- Build / Deploy ---
+.env.local
+.env.*.local
