@@ -28,11 +28,10 @@ export default function PrimarySinglePost() {
   const isAdmin = user?.publicMetadata?.role === "admin";
 
   const [post, setPost] = useState(null);
-  const [status, setStatus] = useState("loading"); // loading | ok | notfound | error
+  const [status, setStatus] = useState("loading");
   const [open, setOpen] = useState(false);
   const [loadingDelete, setLoadingDelete] = useState(false);
 
-  // Append Update modal
   const [appendOpen, setAppendOpen] = useState(false);
   const [appendHtml, setAppendHtml] = useState("");
   const [appending, setAppending] = useState(false);
@@ -56,7 +55,7 @@ export default function PrimarySinglePost() {
     return () => ctrl.abort();
   }, [id]);
 
-  // Prefer: cover → author_image_url → category fallback
+  // Hero: prefer cover → author avatar → category fallback
   const heroSrc = useMemo(() => {
     if (!post) return "/featured2.jpeg";
     const cover = (post.cover_image_url || "").trim();
@@ -193,7 +192,6 @@ export default function PrimarySinglePost() {
 
           <div className="flex flex-wrap items-center gap-2 text-gray-500 text-sm">
             <span>By</span>
-            {/* Link to About page explicitly */}
             <Link to="/about" className="text-indigo-700 font-semibold hover:underline">
               {post.author || "anonymous"}
             </Link>
@@ -223,7 +221,6 @@ export default function PrimarySinglePost() {
 
       {/* Body + sidebar */}
       <div className="flex flex-col md:flex-row gap-8">
-        {/* Main content */}
         <div className="md:flex-1 lg:w-3/4 lg:text-lg flex flex-col gap-6">
           <div
             className="post-content"
@@ -241,18 +238,14 @@ export default function PrimarySinglePost() {
             <div className="flex flex-col gap-4">
               <div className="flex items-center gap-4">
                 <Image
-                  // Author avatar from the post → cover → fallback
                   src={
-                    (post?.author_image_url || "").trim() ||
-                    (post?.cover_image_url || "").trim() ||
-                    "/featured1.jpeg"
+                    (post?.author_image_url || "").trim() || "/default-avatar.png" // 👈 put a Clerk default avatar asset here
                   }
                   alt={`${post?.author || "anonymous"} avatar`}
                   className="w-12 h-12 rounded-full object-cover"
                   w="48"
                   h="48"
                 />
-                {/* Navigate to About page on click */}
                 <Link to="/about" className="text-blue-800 hover:underline">
                   {post.author || "anonymous"}
                 </Link>
@@ -276,12 +269,10 @@ export default function PrimarySinglePost() {
             {isAdmin && (
               <>
                 <PostMenuActions
-                  onSave={() => console.log("Saved")}
                   editTo={`/posts/${id}/edit`}
                   resourceName={`"${post?.title || "this post"}"`}
                   onDelete={() => setOpen(true)}
                 />
-
                 <div className="mt-3">
                   <button
                     onClick={() => setAppendOpen(true)}
@@ -290,11 +281,10 @@ export default function PrimarySinglePost() {
                     Add Update
                   </button>
                 </div>
-
                 <ConfirmModal
                   open={open}
                   title="Delete Post?"
-                  message={`Are you sure you want to delete "${post?.title}"? This action cannot be undone.`}
+                  message={`Are you sure you want to delete "${post?.title}"?`}
                   confirmText="Delete"
                   cancelText="Cancel"
                   loading={loadingDelete}
@@ -340,17 +330,12 @@ export default function PrimarySinglePost() {
       {/* Append Update Modal */}
       {isAdmin && appendOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
-          {/* overlay */}
           <div
             className="absolute inset-0 bg-black/40"
             onClick={() => !appending && setAppendOpen(false)}
           />
-          {/* modal */}
           <div className="relative z-10 w-[min(95vw,900px)] max-h-[85vh] overflow-auto rounded-xl bg-white p-4 shadow-xl">
             <h3 className="text-lg font-semibold mb-3">Add Update</h3>
-            <p className="text-sm text-gray-600 mb-3">
-              This will be appended to the end of the article with a timestamp.
-            </p>
             <ReactQuill
               ref={quillRef}
               theme="snow"
