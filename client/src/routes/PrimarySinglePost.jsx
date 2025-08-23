@@ -8,7 +8,7 @@ import Search from "../component/Search.jsx";
 import Comments from "../component/Comments.jsx";
 import ConfirmModal from "../component/ConfirmModal.jsx";
 import DOMPurify from "dompurify";
-import ReactQuill from "react-quill-new"; // Quill editor for appending updates
+import ReactQuill from "react-quill-new";
 import "react-quill-new/dist/quill.snow.css";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:8000";
@@ -19,26 +19,20 @@ const CATEGORY_IMAGES = {
   databases: "/featured3.jpeg",
   "search-engines": "/featured4.jpeg",
   marketing: "/featured5.jpeg",
-  // add normalized variants if you use them:
-  programming: "/featured2.jpeg",
-  "data-science": "/featured3.jpeg",
-  business: "/featured4.jpeg",
-  technology: "/featured5.jpeg",
-  travel: "/featured1.jpeg",
 };
 
 export default function PrimarySinglePost() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useUser();
-  const isAdmin = user?.publicMetadata?.role === "admin"; // admin gate
+  const isAdmin = user?.publicMetadata?.role === "admin";
 
   const [post, setPost] = useState(null);
   const [status, setStatus] = useState("loading"); // loading | ok | notfound | error
-  const [open, setOpen] = useState(false); // confirm delete modal
+  const [open, setOpen] = useState(false);
   const [loadingDelete, setLoadingDelete] = useState(false);
 
-  // Append Update modal state
+  // Append Update modal
   const [appendOpen, setAppendOpen] = useState(false);
   const [appendHtml, setAppendHtml] = useState("");
   const [appending, setAppending] = useState(false);
@@ -62,14 +56,14 @@ export default function PrimarySinglePost() {
     return () => ctrl.abort();
   }, [id]);
 
-  // Prefer uploaded cover; otherwise use a normalized category fallback
+  // Prefer: cover → author_image_url → category fallback
   const heroSrc = useMemo(() => {
     if (!post) return "/featured2.jpeg";
-
     const cover = (post.cover_image_url || "").trim();
     if (cover) return cover;
-
-    const key = (post.category || "").toLowerCase().replace(/\s+/g, "-");
+    const authorImg = (post.author_image_url || "").trim();
+    if (authorImg) return authorImg;
+    const key = (post.category || "").toLowerCase();
     return CATEGORY_IMAGES[key] || "/featured2.jpeg";
   }, [post]);
 
@@ -91,14 +85,12 @@ export default function PrimarySinglePost() {
     }
   }
 
-  // Append update (admin only)
   async function handleAppend() {
     const html = (appendHtml || "").trim();
     if (!html) return;
 
     try {
       setAppending(true);
-
       const stamp = new Date().toLocaleString();
       const updateBlock = `
         <hr/>
@@ -107,7 +99,6 @@ export default function PrimarySinglePost() {
           ${html}
         </section>
       `;
-
       const base = (post.content || post.description || "").trim();
       const nextContent = base ? `${base}\n${updateBlock}` : updateBlock;
 
@@ -165,7 +156,7 @@ export default function PrimarySinglePost() {
   // status === 'ok'
   return (
     <div className="mx-auto max-w-screen-xl px-4 py-8 flex flex-col gap-10">
-      {/* Reader CSS so Quill content renders indents, lists, etc. */}
+      {/* Reader CSS */}
       <style>{`
         .post-content { line-height: 1.75; }
         .post-content p { margin: 0.8rem 0; }
@@ -180,7 +171,6 @@ export default function PrimarySinglePost() {
         .post-content pre { padding: 0.75rem 1rem; overflow:auto; }
         .post-content ul, .post-content ol { margin: 0.75rem 0 0.75rem 1.5rem; }
         .post-content li { margin: 0.25rem 0; }
-        /* Quill indent classes → margin-left steps (24px each) */
         .post-content .ql-indent-1 { margin-left: 1.5rem; }
         .post-content .ql-indent-2 { margin-left: 3rem; }
         .post-content .ql-indent-3 { margin-left: 4.5rem; }
@@ -188,27 +178,10 @@ export default function PrimarySinglePost() {
         .post-content .ql-indent-5 { margin-left: 7.5rem; }
         .post-content .ql-indent-6 { margin-left: 9rem; }
         .post-content .ql-indent-7 { margin-left: 10.5rem; }
-        /* Images inside content */
         .post-content img { max-width: 100%; height: auto; display: block; margin: 1rem auto; }
-
-        /* Appended update block */
-        .post-update { 
-          background: #f8fafc; 
-          border: 1px solid #e5e7eb; 
-          border-radius: 0.75rem; 
-          padding: 1rem; 
-          margin: 1.25rem 0; 
-        }
-        .post-update h3 { 
-          font-weight: 600; 
-          margin-top: 0; 
-          margin-bottom: 0.5rem; 
-        }
-        .post-update__time { 
-          font-weight: 400; 
-          color: #6b7280; 
-          font-size: 0.9em; 
-        }
+        .post-update { background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 0.75rem; padding: 1rem; margin: 1.25rem 0; }
+        .post-update h3 { font-weight: 600; margin-top: 0; margin-bottom: 0.5rem; }
+        .post-update__time { font-weight: 400; color: #6b7280; font-size: 0.9em; }
       `}</style>
 
       {/* Header + hero */}
@@ -220,26 +193,23 @@ export default function PrimarySinglePost() {
 
           <div className="flex flex-wrap items-center gap-2 text-gray-500 text-sm">
             <span>By</span>
-            <Link
-              to={`/author/${encodeURIComponent((post.author || "anonymous").toLowerCase().replace(/\s+/g, "-"))}`}
-              className="text-indigo-700 font-semibold hover:underline"
-            >
+            {/* Link to About page explicitly */}
+            <Link to="/about" className="text-indigo-700 font-semibold hover:underline">
               {post.author || "anonymous"}
             </Link>
             <span className="text-gray-300">|</span>
             <Link
-              to={`/category/${encodeURIComponent(post.category || "general")}`}
+              to={`/posts?cat=${encodeURIComponent(post.category || "general")}`}
               className="text-indigo-700 hover:underline"
             >
               {post.category || "general"}
             </Link>
           </div>
 
-          {/* Intro/summary */}
           <p className="text-gray-600 leading-relaxed">{post.excerpt || ""}</p>
         </div>
 
-        {/* Hero image (cover if present) */}
+        {/* Hero image */}
         <div className="hidden lg:block w-full lg:w-2/5">
           <Image
             src={heroSrc}
@@ -271,16 +241,19 @@ export default function PrimarySinglePost() {
             <div className="flex flex-col gap-4">
               <div className="flex items-center gap-4">
                 <Image
-                  src={user?.imageUrl || "/featured1.jpeg"} // viewer’s avatar (not the post’s author image)
-                  alt="Author avatar"
+                  // Author avatar from the post → cover → fallback
+                  src={
+                    (post?.author_image_url || "").trim() ||
+                    (post?.cover_image_url || "").trim() ||
+                    "/featured1.jpeg"
+                  }
+                  alt={`${post?.author || "anonymous"} avatar`}
                   className="w-12 h-12 rounded-full object-cover"
                   w="48"
                   h="48"
                 />
-                <Link
-                  to={`/author/${encodeURIComponent((post.author || "anonymous").toLowerCase().replace(/\s+/g, "-"))}`}
-                  className="text-blue-800 hover:underline"
-                >
+                {/* Navigate to About page on click */}
+                <Link to="/about" className="text-blue-800 hover:underline">
                   {post.author || "anonymous"}
                 </Link>
               </div>
@@ -309,7 +282,6 @@ export default function PrimarySinglePost() {
                   onDelete={() => setOpen(true)}
                 />
 
-                {/* Add Update (opens Quill modal) */}
                 <div className="mt-3">
                   <button
                     onClick={() => setAppendOpen(true)}
@@ -319,7 +291,6 @@ export default function PrimarySinglePost() {
                   </button>
                 </div>
 
-                {/* Confirm Delete Modal */}
                 <ConfirmModal
                   open={open}
                   title="Delete Post?"
@@ -366,7 +337,7 @@ export default function PrimarySinglePost() {
 
       <Comments postId={id} />
 
-      {/* Append Update Modal (admin only) */}
+      {/* Append Update Modal */}
       {isAdmin && appendOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           {/* overlay */}
