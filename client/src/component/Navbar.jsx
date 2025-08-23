@@ -1,7 +1,14 @@
 // src/component/Navbar.jsx
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
+import {
+  SignedIn,
+  SignedOut,
+  SignInButton,
+  SignOutButton,
+  UserButton,
+  useUser,
+} from "@clerk/clerk-react";
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
@@ -21,7 +28,7 @@ export default function Navbar() {
 
   return (
     <>
-      {/* Keep the navbar above page content */}
+      {/* Navbar */}
       <nav
         className="sticky top-0 z-50 w-full h-16 md:h-20 flex items-center justify-between px-4
                    bg-white/70 dark:bg-gray-950/70 backdrop-blur
@@ -88,6 +95,16 @@ export default function Navbar() {
               </Link>
             )}
             <UserButton />
+
+            {/* Logout */}
+            <SignOutButton>
+              <button
+                className="ml-3 px-3 py-1.5 rounded-md border border-gray-300 dark:border-white/20
+                           hover:bg-gray-50 dark:hover:bg-white/10 transition-colors"
+              >
+                LOGOUT
+              </button>
+            </SignOutButton>
           </SignedIn>
         </div>
 
@@ -103,7 +120,6 @@ export default function Navbar() {
       </nav>
 
       {/* ===== Mobile Overlay Menu ===== */}
-      {/* Backdrop */}
       <div
         className={`md:hidden fixed inset-0 z-[60] bg-black/40 transition-opacity duration-300
                     ${open ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}
@@ -121,7 +137,7 @@ export default function Navbar() {
         role="dialog"
         aria-label="Mobile menu"
       >
-        {/* Header row inside panel (close button + logo) */}
+        {/* Header row */}
         <div className="h-16 md:h-20 px-4 flex items-center justify-between border-b border-gray-200 dark:border-white/10">
           <Link to="/" onClick={() => setOpen(false)} className="flex items-center gap-2 font-mono">
             <img src="/image.png" alt="Omega Division logo" className="w-7 h-7" />
@@ -193,6 +209,18 @@ export default function Navbar() {
                 Write
               </Link>
             )}
+
+            {/* Logout for mobile */}
+            <SignOutButton>
+              <button
+                onClick={() => setOpen(false)}
+                className="mt-2 px-4 py-2 rounded-md border
+                           border-gray-300 dark:border-white/30
+                           hover:bg-gray-100 dark:hover:bg-white/10 transition-colors"
+              >
+                LOGOUT
+              </button>
+            </SignOutButton>
           </SignedIn>
         </div>
       </aside>
