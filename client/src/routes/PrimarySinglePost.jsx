@@ -13,7 +13,6 @@ import "react-quill-new/dist/quill.snow.css";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
-// category → fallback hero images
 const CATEGORY_IMAGES = {
   "web-design": "/featured1.jpeg",
   development: "/featured2.jpeg",
@@ -29,11 +28,11 @@ export default function PrimarySinglePost() {
   const isAdmin = user?.publicMetadata?.role === "admin";
 
   const [post, setPost] = useState(null);
-  const [status, setStatus] = useState("loading");
+  const [status, setStatus] = useState("loading"); // loading | ok | notfound | error
   const [open, setOpen] = useState(false);
   const [loadingDelete, setLoadingDelete] = useState(false);
 
-  // Append Update modal state
+  // Append Update modal
   const [appendOpen, setAppendOpen] = useState(false);
   const [appendHtml, setAppendHtml] = useState("");
   const [appending, setAppending] = useState(false);
@@ -57,11 +56,13 @@ export default function PrimarySinglePost() {
     return () => ctrl.abort();
   }, [id]);
 
-  // Hero image = cover → category fallback
+  // Prefer: cover → author_image_url → category fallback
   const heroSrc = useMemo(() => {
     if (!post) return "/featured2.jpeg";
     const cover = (post.cover_image_url || "").trim();
     if (cover) return cover;
+    const authorImg = (post.author_image_url || "").trim();
+    if (authorImg) return authorImg;
     const key = (post.category || "").toLowerCase();
     return CATEGORY_IMAGES[key] || "/featured2.jpeg";
   }, [post]);
@@ -155,6 +156,34 @@ export default function PrimarySinglePost() {
   // status === 'ok'
   return (
     <div className="mx-auto max-w-screen-xl px-4 py-8 flex flex-col gap-10">
+      {/* Reader CSS */}
+      <style>{`
+        .post-content { line-height: 1.75; }
+        .post-content p { margin: 0.8rem 0; }
+        .post-content blockquote {
+          border-left: 4px solid #e5e7eb; padding-left: 1rem; color: #374151; margin: 1rem 0;
+        }
+        .post-content pre, .post-content code {
+          background: #f8fafc; border-radius: 0.5rem; padding: 0.25rem 0.5rem;
+          font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+          font-size: 0.95em;
+        }
+        .post-content pre { padding: 0.75rem 1rem; overflow:auto; }
+        .post-content ul, .post-content ol { margin: 0.75rem 0 0.75rem 1.5rem; }
+        .post-content li { margin: 0.25rem 0; }
+        .post-content .ql-indent-1 { margin-left: 1.5rem; }
+        .post-content .ql-indent-2 { margin-left: 3rem; }
+        .post-content .ql-indent-3 { margin-left: 4.5rem; }
+        .post-content .ql-indent-4 { margin-left: 6rem; }
+        .post-content .ql-indent-5 { margin-left: 7.5rem; }
+        .post-content .ql-indent-6 { margin-left: 9rem; }
+        .post-content .ql-indent-7 { margin-left: 10.5rem; }
+        .post-content img { max-width: 100%; height: auto; display: block; margin: 1rem auto; }
+        .post-update { background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 0.75rem; padding: 1rem; margin: 1.25rem 0; }
+        .post-update h3 { font-weight: 600; margin-top: 0; margin-bottom: 0.5rem; }
+        .post-update__time { font-weight: 400; color: #6b7280; font-size: 0.9em; }
+      `}</style>
+
       {/* Header + hero */}
       <div className="flex flex-col lg:flex-row gap-8">
         <div className="lg:w-3/5 flex flex-col gap-6">
@@ -164,6 +193,7 @@ export default function PrimarySinglePost() {
 
           <div className="flex flex-wrap items-center gap-2 text-gray-500 text-sm">
             <span>By</span>
+            {/* Link to About page explicitly */}
             <Link to="/about" className="text-indigo-700 font-semibold hover:underline">
               {post.author || "anonymous"}
             </Link>
@@ -179,6 +209,7 @@ export default function PrimarySinglePost() {
           <p className="text-gray-600 leading-relaxed">{post.excerpt || ""}</p>
         </div>
 
+        {/* Hero image */}
         <div className="hidden lg:block w-full lg:w-2/5">
           <Image
             src={heroSrc}
@@ -210,12 +241,18 @@ export default function PrimarySinglePost() {
             <div className="flex flex-col gap-4">
               <div className="flex items-center gap-4">
                 <Image
-                  src="/google-avatar.png" // 👈 Always default Google-style avatar
+                  // Author avatar from the post → cover → fallback
+                  src={
+                    (post?.author_image_url || "").trim() ||
+                    (post?.cover_image_url || "").trim() ||
+                    "/featured1.jpeg"
+                  }
                   alt={`${post?.author || "anonymous"} avatar`}
                   className="w-12 h-12 rounded-full object-cover"
                   w="48"
                   h="48"
                 />
+                {/* Navigate to About page on click */}
                 <Link to="/about" className="text-blue-800 hover:underline">
                   {post.author || "anonymous"}
                 </Link>
@@ -224,15 +261,27 @@ export default function PrimarySinglePost() {
               <p className="text-sm text-gray-500">
                 Passionate writer about {post.category || "tech"}.
               </p>
+
+              <div className="flex gap-3">
+                <a href="https://facebook.com" target="_blank" rel="noreferrer">
+                  <Image src="/facebook.svg" alt="Facebook" className="w-5 h-5" w="20" h="20" />
+                </a>
+                <a href="https://instagram.com/jagoxiii" target="_blank" rel="noreferrer">
+                  <Image src="/instagram.svg" alt="Instagram" className="w-5 h-5" w="20" h="20" />
+                </a>
+              </div>
             </div>
 
+            {/* Admin-only actions */}
             {isAdmin && (
               <>
                 <PostMenuActions
+                  onSave={() => console.log("Saved")}
                   editTo={`/posts/${id}/edit`}
                   resourceName={`"${post?.title || "this post"}"`}
                   onDelete={() => setOpen(true)}
                 />
+
                 <div className="mt-3">
                   <button
                     onClick={() => setAppendOpen(true)}
@@ -241,6 +290,7 @@ export default function PrimarySinglePost() {
                     Add Update
                   </button>
                 </div>
+
                 <ConfirmModal
                   open={open}
                   title="Delete Post?"
@@ -254,6 +304,31 @@ export default function PrimarySinglePost() {
               </>
             )}
 
+            <h2 className="mt-8 mb-4 text-sm font-medium">Categories</h2>
+            <nav className="flex flex-col gap-2 text-sm">
+              <Link className="underline" to="/posts">
+                All
+              </Link>
+              <Link className="underline" to="/posts?cat=programming">
+                Programming
+              </Link>
+              <Link className="underline" to="/posts?cat=development">
+                Development
+              </Link>
+              <Link className="underline" to="/posts?cat=data-science">
+                Data Science
+              </Link>
+              <Link className="underline" to="/posts?cat=business">
+                Business
+              </Link>
+              <Link className="underline" to="/posts?cat=technology">
+                Technology
+              </Link>
+              <Link className="underline" to="/posts?cat=travel">
+                Travel
+              </Link>
+            </nav>
+
             <h2 className="mt-8 mb-4 text-sm font-medium">Search</h2>
             <Search />
           </div>
@@ -262,14 +337,20 @@ export default function PrimarySinglePost() {
 
       <Comments postId={id} />
 
+      {/* Append Update Modal */}
       {isAdmin && appendOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
+          {/* overlay */}
           <div
             className="absolute inset-0 bg-black/40"
             onClick={() => !appending && setAppendOpen(false)}
           />
+          {/* modal */}
           <div className="relative z-10 w-[min(95vw,900px)] max-h-[85vh] overflow-auto rounded-xl bg-white p-4 shadow-xl">
             <h3 className="text-lg font-semibold mb-3">Add Update</h3>
+            <p className="text-sm text-gray-600 mb-3">
+              This will be appended to the end of the article with a timestamp.
+            </p>
             <ReactQuill
               ref={quillRef}
               theme="snow"
@@ -280,14 +361,14 @@ export default function PrimarySinglePost() {
             />
             <div className="mt-2 flex items-center justify-end gap-2">
               <button
-                className="px-3 py-1.5 rounded border text-gray-700"
+                className="px-3 py-1.5 rounded border text-gray-700 disabled:opacity-60"
                 onClick={() => setAppendOpen(false)}
                 disabled={appending}
               >
                 Cancel
               </button>
               <button
-                className="px-3 py-1.5 rounded bg-indigo-600 text-white hover:bg-indigo-500"
+                className="px-3 py-1.5 rounded bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-60"
                 onClick={handleAppend}
                 disabled={appending}
               >
