@@ -131,3 +131,28 @@ body {
   display: block;
   margin: 1rem auto;
 }
+
+/* kill the gray box + gradient for react-lite-youtube-embed */
+.yt-lite {
+  background: transparent !important; /* remove light gray */
+  border-radius: 12px; /* match your card radius */
+  aspect-ratio: 16 / 9; /* keep 16:9 without padding hack */
+  overflow: hidden;
+}
+
+/* remove the built‑in gradient overlay */
+.yt-lite::before {
+  content: none !important;
+}
+
+/* make sure the poster fills the box cleanly */
+.yt-lite > img {
+  object-fit: cover;
+  width: 100%;
+  height: 100%;
+}
+
+/* keep the play button centered */
+.yt-lite > .lty-playbtn {
+  transform: translate(-50%, -50%);
+}
