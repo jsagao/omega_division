@@ -241,25 +241,30 @@ export default function PrimarySinglePost() {
           />
 
           {/* Videos */}
-          {Array.isArray(post.video_urls) && post.video_urls.filter(Boolean).length > 0 && (
+          {Array.isArray(post.video_urls) && post.video_urls.length > 0 && (
             <section className="flex flex-col gap-3">
               <h2 className="text-base font-medium text-gray-700">Videos</h2>
               <div className="video-grid">
-                {post.video_urls.filter(Boolean).map((url) => (
-                  <div key={url} className="player-wrapper bg-black/5">
-                    <ReactPlayer
-                      className="react-player"
-                      url={url}
-                      width="100%"
-                      height="100%"
-                      controls
-                      playsinline
-                      config={{
-                        youtube: { playerVars: { rel: 0 } }, // fewer unrelated suggestions
-                      }}
-                    />
-                  </div>
-                ))}
+                {post.video_urls.map((raw, i) => {
+                  const url = (raw || "").trim();
+                  if (!url || !ReactPlayer.canPlay(url)) return null; // 👈 guard
+                  return (
+                    <div key={`${i}-${url}`} className="player-wrapper bg-black/5">
+                      <ReactPlayer
+                        url={url}
+                        width="100%"
+                        height="100%"
+                        controls
+                        playsinline
+                        style={{ position: "absolute", top: 0, left: 0 }} // ensure fill
+                        onError={(e) => console.warn("ReactPlayer error:", url, e)} // 👈 surface errors
+                        config={{
+                          youtube: { playerVars: { rel: 0, modestbranding: 1 } },
+                        }}
+                      />
+                    </div>
+                  );
+                })}
               </div>
             </section>
           )}
