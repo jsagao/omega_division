@@ -9,7 +9,8 @@ import Comments from "../component/Comments.jsx";
 import ConfirmModal from "../component/ConfirmModal.jsx";
 import DOMPurify from "dompurify";
 import ReactQuill from "react-quill-new";
-import ReactPlayer from "react-player"; // ✅ video player
+import LiteYouTubeEmbed from "react-lite-youtube-embed";
+import "react-lite-youtube-embed/dist/LiteYouTubeEmbed.css";
 import "react-quill-new/dist/quill.snow.css";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:8000";
@@ -22,55 +23,41 @@ const CATEGORY_IMAGES = {
   marketing: "/featured5.jpeg",
 };
 
-// --- helpers for fallback iframe embeds ---
-// Normalize common share links to a canonical player URL
-function normalizeVideoUrl(raw) {
-  if (!raw) return "";
-  const url = raw.trim();
+/* ---------------- Helpers ---------------- */
 
-  // YouTube Shorts → watch
-  const shorts = url.match(/youtube\.com\/shorts\/([\w-]{11})/i);
-  if (shorts) return `https://www.youtube.com/watch?v=${shorts[1]}`;
+// Extract a YouTube video ID from common URL patterns (watch, shorts, youtu.be)
+function getYouTubeId(url) {
+  if (!url) return null;
+  const s = url.trim();
 
-  // youtu.be → watch
-  const yb = url.match(/youtu\.be\/([\w-]{11})(\?.*)?$/i);
-  if (yb) return `https://www.youtube.com/watch?v=${yb[1]}`;
+  // shorts -> capture 11-char ID
+  let m = s.match(/youtube\.com\/shorts\/([\w-]{11})/i);
+  if (m) return m[1];
 
-  // youtube watch already? keep
-  if (/youtube\.com\/watch\?v=/i.test(url)) return url;
+  // watch?v=VIDEOID
+  m = s.match(/[?&]v=([\w-]{11})/i);
+  if (m) return m[1];
 
-  // Vimeo numeric id
-  const vimeo = url.match(/vimeo\.com\/(\d+)/i);
-  if (vimeo) return `https://vimeo.com/${vimeo[1]}`;
+  // youtu.be/VIDEOID
+  m = s.match(/youtu\.be\/([\w-]{11})/i);
+  if (m) return m[1];
 
-  return url;
-}
-
-// Build an iframe src as an ultimate fallback (no SDK)
-function toEmbedUrl(url) {
-  const yt = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]{11})/i);
-  if (yt) return `https://www.youtube.com/embed/${yt[1]}?rel=0&modestbranding=1`;
-  const shorts = url.match(/youtube\.com\/shorts\/([\w-]{11})/i);
-  if (shorts) return `https://www.youtube.com/embed/${shorts[1]}?rel=0&modestbranding=1`;
-  const vimeo = url.match(/vimeo\.com\/(\d+)/i);
-  if (vimeo) return `https://player.vimeo.com/video/${vimeo[1]}`;
   return null;
 }
 
-function FallbackEmbed({ url }) {
-  const src = toEmbedUrl(url);
-  if (!src) return null;
-  return (
-    <iframe
-      src={src}
-      className="react-player"
-      title="Video"
-      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-      allowFullScreen
-      style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", border: 0 }}
-    />
-  );
+// Vimeo numeric id
+function getVimeoId(url) {
+  if (!url) return null;
+  const m = url.trim().match(/vimeo\.com\/(\d+)/i);
+  return m ? m[1] : null;
 }
+
+// Direct MP4 or WebM?
+function isDirectVideo(url) {
+  return /\.(mp4|webm|ogg)(\?.*)?$/i.test(url || "");
+}
+
+/* -------------- Component -------------- */
 
 export default function PrimarySinglePost() {
   const { id } = useParams();
@@ -87,9 +74,6 @@ export default function PrimarySinglePost() {
   const [appendHtml, setAppendHtml] = useState("");
   const [appending, setAppending] = useState(false);
   const quillRef = useRef(null);
-
-  // track which video cards should render fallback iframe
-  const [fallbackIdx, setFallbackIdx] = useState(() => new Set());
 
   useEffect(() => {
     const ctrl = new AbortController();
@@ -300,79 +284,85 @@ export default function PrimarySinglePost() {
               <h2 className="text-base font-medium text-gray-700">Videos</h2>
               <div className="video-grid">
                 {post.video_urls.map((raw, i) => {
-                  const original = (raw || "").trim();
-                  if (!original) return null;
+                  const url = (raw || "").trim();
+                  if (!url) return null;
 
-                  // normalize first (handles Shorts & youtu.be)
-                  const url = normalizeVideoUrl(original);
+                  const ytId = getYouTubeId(url);
+                  const vmId = getVimeoId(url);
 
-                  const canPlay = ReactPlayer.canPlay(url);
-                  // If ReactPlayer can't play, go straight to iframe fallback
-                  if (!canPlay) {
-                    console.warn("[Video] Unplayable via SDK → using iframe fallback:", {
-                      original,
-                      url,
-                    });
+                  if (ytId) {
+                    // YouTube → super-light embed
                     return (
-                      <div key={`${i}-${url}`} className="player-wrapper bg-black/5">
-                        <FallbackEmbed url={url} />
+                      <div key={`yt-${i}-${ytId}`} className="player-wrapper bg-black/5">
+                        <LiteYouTubeEmbed
+                          id={ytId}
+                          title={`YouTube video ${i + 1}`}
+                          poster="hqdefault" // "maxresdefault" if you prefer
+                          webp
+                        />
                       </div>
                     );
                   }
 
+                  if (vmId) {
+                    // Vimeo → simple iframe
+                    const src = `https://player.vimeo.com/video/${vmId}`;
+                    return (
+                      <div key={`vimeo-${i}-${vmId}`} className="player-wrapper bg-black/5">
+                        <iframe
+                          src={src}
+                          className="react-player"
+                          title={`Vimeo video ${i + 1}`}
+                          allow="autoplay; fullscreen; picture-in-picture"
+                          allowFullScreen
+                          style={{
+                            position: "absolute",
+                            top: 0,
+                            left: 0,
+                            width: "100%",
+                            height: "100%",
+                            border: 0,
+                          }}
+                        />
+                      </div>
+                    );
+                  }
+
+                  if (isDirectVideo(url)) {
+                    // Direct MP4/WebM → native video tag
+                    return (
+                      <div key={`file-${i}`} className="player-wrapper bg-black/5">
+                        <video
+                          controls
+                          playsInline
+                          style={{
+                            position: "absolute",
+                            top: 0,
+                            left: 0,
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover",
+                          }}
+                          src={url}
+                        />
+                      </div>
+                    );
+                  }
+
+                  // Unknown provider — skip or render the raw link
                   return (
-                    <div key={`${i}-${url}`} className="player-wrapper bg-black/5">
-                      <ReactPlayer
-                        url={url}
-                        width="100%"
-                        height="100%"
-                        controls
-                        playsinline
-                        style={{ position: "absolute", top: 0, left: 0 }}
-                        config={{
-                          youtube: {
-                            playerVars: {
-                              // passing origin helps some browsers/extensions
-                              origin:
-                                typeof window !== "undefined" ? window.location.origin : undefined,
-                              rel: 0,
-                              modestbranding: 1,
-                            },
-                          },
-                        }}
-                        onReady={() => console.log("[Video] ready:", url)}
-                        onPlay={() => console.log("[Video] play:", url)}
-                        onError={(e) => {
-                          console.warn("[Video] ReactPlayer error → switching to iframe:", {
-                            url,
-                            e,
-                          });
-                          // Render fallback inline if the SDK errors out
-                          const container = e?.target?.parentElement;
-                          if (container) {
-                            // swap to fallback iframe
-                            container.innerHTML = "";
-                            const src = toEmbedUrl(url);
-                            if (src) {
-                              const iframe = document.createElement("iframe");
-                              iframe.src = src;
-                              iframe.title = "Video";
-                              iframe.allow =
-                                "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
-                              iframe.allowFullscreen = true;
-                              Object.assign(iframe.style, {
-                                position: "absolute",
-                                top: "0",
-                                left: "0",
-                                width: "100%",
-                                height: "100%",
-                                border: "0",
-                              });
-                              container.appendChild(iframe);
-                            }
-                          }
-                        }}
-                      />
+                    <div key={`unknown-${i}`} className="rounded-md p-3 bg-gray-50 border">
+                      <p className="text-sm text-gray-600">
+                        Unrecognized video link:{" "}
+                        <a
+                          className="text-indigo-700 underline break-all"
+                          href={url}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          {url}
+                        </a>
+                      </p>
                     </div>
                   );
                 })}
