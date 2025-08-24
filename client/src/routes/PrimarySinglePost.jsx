@@ -223,11 +223,17 @@ export default function PrimarySinglePost() {
         .post-update h3 { font-weight: 600; margin-top: 0; margin-bottom: 0.5rem; }
         .post-update__time { font-weight: 400; color: #6b7280; font-size: 0.9em; }
 
-        /* video layout */
-        .video-grid { display: grid; gap: 1rem; }
-        @media (min-width: 768px) { .video-grid { grid-template-columns: 1fr 1fr; } }
-        .player-wrapper { position: relative; padding-top: 56.25%; border-radius: 0.75rem; overflow: hidden; }
-        .player-wrapper .react-player { position: absolute; top:0; left:0; }
+  /* video layout */
+.video-grid { display: grid; gap: 1rem; }
+@media (min-width: 768px) { .video-grid { grid-template-columns: 1fr 1fr; } }
+
+/* For iframe (Vimeo) and native <video/> */
+.player-wrapper { position: relative; padding-top: 56.25%; border-radius: 0.75rem; overflow: hidden; }
+.player-wrapper .react-player { position: absolute; top: 0; left: 0; }
+
+/* For LiteYouTubeEmbed (NO padding!) */
+.yt-card { border-radius: 0.75rem; overflow: hidden; }
+.yt-card .yt-lite { border-radius: 0.75rem; }
       `}</style>
 
       {/* Header + hero */}
@@ -291,13 +297,13 @@ export default function PrimarySinglePost() {
                   const vmId = getVimeoId(url);
 
                   if (ytId) {
-                    // YouTube → super-light embed
+                    // ✅ No .player-wrapper here
                     return (
-                      <div key={`yt-${i}-${ytId}`} className="player-wrapper bg-black/5">
+                      <div key={`yt-${i}-${ytId}`} className="yt-card">
                         <LiteYouTubeEmbed
                           id={ytId}
                           title={`YouTube video ${i + 1}`}
-                          poster="hqdefault" // "maxresdefault" if you prefer
+                          poster="hqdefault"
                           webp
                         />
                       </div>
@@ -305,7 +311,7 @@ export default function PrimarySinglePost() {
                   }
 
                   if (vmId) {
-                    // Vimeo → simple iframe
+                    // keep wrapper for ratio
                     const src = `https://player.vimeo.com/video/${vmId}`;
                     return (
                       <div key={`vimeo-${i}-${vmId}`} className="player-wrapper bg-black/5">
@@ -329,7 +335,6 @@ export default function PrimarySinglePost() {
                   }
 
                   if (isDirectVideo(url)) {
-                    // Direct MP4/WebM → native video tag
                     return (
                       <div key={`file-${i}`} className="player-wrapper bg-black/5">
                         <video
@@ -349,7 +354,6 @@ export default function PrimarySinglePost() {
                     );
                   }
 
-                  // Unknown provider — skip or render the raw link
                   return (
                     <div key={`unknown-${i}`} className="rounded-md p-3 bg-gray-50 border">
                       <p className="text-sm text-gray-600">

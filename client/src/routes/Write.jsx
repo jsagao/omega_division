@@ -7,8 +7,9 @@ import { useNavigate } from "react-router-dom";
 import "react-quill-new/dist/quill.snow.css";
 import ReactQuill from "react-quill-new";
 
-// Video preview
-import ReactPlayer from "react-player";
+// YouTube (lightweight)
+import LiteYouTubeEmbed from "react-lite-youtube-embed";
+import "react-lite-youtube-embed/dist/LiteYouTubeEmbed.css";
 
 // Cloudinary helpers
 import { uploadToCloudinary } from "../utils/uploadCloudinary";
@@ -19,7 +20,7 @@ const API = import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8000";
 const CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
 const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
 
-// Transform defaults for final images
+// Transform defaults for final images in editor
 const EDITOR_IMG_WIDTH = 900;
 const EDITOR_IMG_QUALITY = 80; // 1..100
 const EDITOR_IMG_CROP = "limit";
@@ -39,12 +40,37 @@ const TITLE_MAX = 100;
 const EXCERPT_MAX = 250;
 const CONTENT_MAX = 5000;
 
+// ---------- helpers ----------
 function stripHtml(html) {
   const div = document.createElement("div");
   div.innerHTML = html || "";
   return (div.textContent || div.innerText || "").trim();
 }
 
+function getYouTubeId(url) {
+  if (!url) return null;
+  const u = url.trim();
+  // shorts → id
+  const mShort = u.match(/youtube\.com\/shorts\/([\w-]{11})/i);
+  if (mShort) return mShort[1];
+  // youtu.be → id
+  const mBe = u.match(/youtu\.be\/([\w-]{11})/i);
+  if (mBe) return mBe[1];
+  // watch?v= → id
+  const mWatch = u.match(/[?&]v=([\w-]{11})/i);
+  if (mWatch) return mWatch[1];
+  return null;
+}
+function getVimeoId(url) {
+  if (!url) return null;
+  const m = url.trim().match(/vimeo\.com\/(\d+)/i);
+  return m ? m[1] : null;
+}
+function isDirectVideo(url) {
+  return !!url && /\.(mp4|webm|ogg)(\?.*)?$/i.test(url.trim());
+}
+
+// ---------- component ----------
 export default function Write() {
   const { isLoaded, isSignedIn, user } = useUser();
   const navigate = useNavigate();
@@ -63,7 +89,7 @@ export default function Write() {
   const [showCoverPreview, setShowCoverPreview] = useState(false);
 
   // videos
-  const [videoUrls, setVideoUrls] = useState([""]); // 👈 NEW
+  const [videoUrls, setVideoUrls] = useState([""]);
 
   // errors / submit
   const [errorMsg, setErrorMsg] = useState("");
@@ -82,8 +108,8 @@ export default function Write() {
   // Debounce to prevent double-insert from weird paste/drop combos
   const insertingRef = useRef(false);
 
-  // Track pending images we inserted as blob URLs so we can upload them on publish
-  // Each item: { tempUrl: string, file: File }
+  // Track pending images (blob URLs) to upload on publish
+  // Each: { tempUrl: string, file: File }
   const [pendingImages, setPendingImages] = useState([]);
 
   // Acquire quill instance safely
@@ -141,7 +167,7 @@ export default function Write() {
     if (nextPlain.length <= CONTENT_MAX) setContent(html);
   }
 
-  // COVER IMAGE (uploads immediately; keep as-is)
+  // ---------- Cover image ----------
   const coverInputRef = useRef(null);
   function pickCover() {
     coverInputRef.current?.click();
@@ -178,12 +204,12 @@ export default function Write() {
     }
   }
 
-  // Insert a local (blob) image into Quill now; upload later on Publish
+  // ---------- Editor image insert (blob now, upload on publish) ----------
   async function insertLocalImage(file) {
     if (!file.type.startsWith("image/")) throw new Error("Please choose an image file.");
     if (!quill) throw new Error("Editor not ready yet. Try again in a moment.");
 
-    // Prevent accidental double-calls (some browsers dispatch both HTML and File paths)
+    // Prevent accidental double-calls
     if (insertingRef.current) return;
     insertingRef.current = true;
     setTimeout(() => (insertingRef.current = false), 200);
@@ -196,7 +222,6 @@ export default function Write() {
     setPendingImages((prev) => [...prev, { tempUrl, file }]);
   }
 
-  // Toolbar image button opens picker → insert blob
   const embedInputRef = useRef(null);
   function pickEmbedImage() {
     embedInputRef.current?.click();
@@ -220,10 +245,10 @@ export default function Write() {
     }
   }, [user, coverUrl]);
 
-  // Drag & drop / paste → insert blob, DO NOT upload yet
+  // Drag & drop / paste → insert blob; DO NOT upload yet
   useEffect(() => {
     if (!quill) return;
-    if (handlersBoundRef.current) return; // avoid multiple bindings
+    if (handlersBoundRef.current) return;
 
     const root = quill.root;
 
@@ -296,12 +321,10 @@ export default function Write() {
   async function resolveEditorImages(html, pending) {
     if (!html) return html;
 
-    // Create a mutable copy
     let nextHtml = html;
 
-    // 1) Replace all temp blob URLs we tracked
+    // Replace temp blob URLs we inserted
     for (const { tempUrl, file } of pending) {
-      // still present?
       if (!nextHtml.includes(tempUrl)) continue;
 
       if (!CLOUD_NAME || !UPLOAD_PRESET) {
@@ -319,15 +342,11 @@ export default function Write() {
         crop: EDITOR_IMG_CROP,
       });
 
-      // Replace every occurrence (just in case)
       nextHtml = nextHtml.split(tempUrl).join(finalUrl);
-
-      // free the object URL
       URL.revokeObjectURL(tempUrl);
     }
 
-    // 2) Also handle any <img src="data:..."> pasted from clipboard as base64
-    //    Convert them to Blob and upload.
+    // Convert <img src="data:image/..."> → upload → replace
     const dataUrlRegex = /<img[^>]+src=["'](data:image\/[^"']+)["'][^>]*>/gi;
     const matches = [...nextHtml.matchAll(dataUrlRegex)];
     for (const m of matches) {
@@ -345,7 +364,7 @@ export default function Write() {
         });
         nextHtml = nextHtml.split(dataUrl).join(finalUrl);
       } catch {
-        // ignore if something goes wrong converting this one
+        // ignore this one
       }
     }
 
@@ -363,7 +382,7 @@ export default function Write() {
     return new File([u8arr], filename, { type: mime });
   }
 
-  // --- Video handlers (NEW) ---
+  // --- Video handlers ---
   function handleVideoChange(i, val) {
     const next = [...videoUrls];
     next[i] = val;
@@ -408,13 +427,12 @@ export default function Write() {
     try {
       setSubmitting(true);
 
-      // 1) Resolve all editor images (upload blobs/data URLs -> Cloudinary)
+      // Resolve editor images first
       const resolvedHtml = await resolveEditorImages(content, pendingImages);
 
       const authorName =
         user?.fullName || user?.username || user?.primaryEmailAddress?.emailAddress || "anonymous";
 
-      // 2) Build payload using resolvedHtml
       const payload = {
         title: title.trim(),
         category,
@@ -426,10 +444,9 @@ export default function Write() {
         author_image_url: user?.imageUrl || "",
         featured_slot: featuredSlot,
         featured_rank: featuredRank ? Number(featuredRank) : null,
-        video_urls: videoUrls.map((u) => u.trim()).filter(Boolean), // 👈 NEW
+        video_urls: videoUrls.map((u) => u.trim()).filter(Boolean),
       };
 
-      // 3) Send
       const res = await fetch(`${API}/posts`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -453,13 +470,15 @@ export default function Write() {
 
   return (
     <div className="h-[calc(100vh-64px)] md:h-[calc(100vh-80px)] flex flex-col gap-6 m-11">
-      {/* Keep editor images responsive within Quill */}
+      {/* Keep editor images responsive within Quill + video preview styles */}
       <style>{`
         .ql-editor img{max-width:100%;height:auto;display:block;margin:1rem auto;}
-        .player-wrapper { position: relative; padding-top: 56.25%; border-radius: 0.75rem; overflow: hidden; }
-        .player-wrapper .react-player { position: absolute; top:0; left:0; }
         .video-grid { display: grid; gap: 1rem; }
         @media (min-width: 768px) { .video-grid { grid-template-columns: 1fr 1fr; } }
+        .player-wrapper { position: relative; padding-top: 56.25%; border-radius: 0.75rem; overflow: hidden; }
+        .player-wrapper iframe, .player-wrapper video { position:absolute; top:0; left:0; width:100%; height:100%; border:0; }
+        .yt-card { border-radius: 0.75rem; overflow: hidden; }
+        .yt-card .yt-lite { border-radius: 0.75rem; }
       `}</style>
 
       <h1 className="text-xl font-light">Create a New Post</h1>
@@ -601,20 +620,23 @@ export default function Write() {
           />
         </div>
 
-        {/* Video URLs (NEW) */}
+        {/* Video URLs */}
         <div>
           <label className="text-gray-500 font-medium">Video URLs</label>
           <div className="mt-2 video-grid">
             {videoUrls.map((url, i) => {
               const u = url.trim();
-              const can = u && ReactPlayer.canPlay(u);
+              const ytId = getYouTubeId(u);
+              const vmId = getVimeoId(u);
+              const direct = isDirectVideo(u);
+
               return (
                 <div key={i} className="flex flex-col gap-2">
                   <div className="flex gap-2">
                     <input
                       value={url}
                       onChange={(e) => handleVideoChange(i, e.target.value)}
-                      placeholder="https://youtube.com/watch?v=…"
+                      placeholder="https://youtube.com/watch?v=…  |  https://vimeo.com/123456789  |  https://.../video.mp4"
                       className="flex-1 p-2 rounded-xl bg-white shadow-md border"
                     />
                     {videoUrls.length > 1 && (
@@ -627,17 +649,31 @@ export default function Write() {
                       </button>
                     )}
                   </div>
-                  {can && (
-                    <div className="player-wrapper bg-black/5">
-                      <ReactPlayer
-                        className="react-player"
-                        url={u}
-                        width="100%"
-                        height="100%"
-                        controls
-                        playsinline
-                        config={{ youtube: { playerVars: { rel: 0 } } }}
+
+                  {/* Previews */}
+                  {ytId && (
+                    <div className="yt-card">
+                      <LiteYouTubeEmbed
+                        id={ytId}
+                        title={`YouTube video ${i + 1}`}
+                        poster="hqdefault"
+                        webp
                       />
+                    </div>
+                  )}
+                  {vmId && (
+                    <div className="player-wrapper bg-black/5">
+                      <iframe
+                        src={`https://player.vimeo.com/video/${vmId}`}
+                        allow="autoplay; fullscreen; picture-in-picture"
+                        allowFullScreen
+                        title={`Vimeo video ${i + 1}`}
+                      />
+                    </div>
+                  )}
+                  {direct && (
+                    <div className="player-wrapper bg-black/5">
+                      <video controls playsInline src={u} />
                     </div>
                   )}
                 </div>
