@@ -90,6 +90,7 @@ export default function PrimarySinglePost() {
 
     try {
       setAppending(true);
+
       const stamp = new Date().toLocaleString();
       const updateBlock = `
         <hr/>
@@ -98,13 +99,21 @@ export default function PrimarySinglePost() {
           ${html}
         </section>
       `;
+
       const base = (post.content || post.description || "").trim();
       const nextContent = base ? `${base}\n${updateBlock}` : updateBlock;
+
+      // 👇 Keep the existing excerpt/description so backend won't regenerate it
+      const payload = {
+        content: nextContent,
+        excerpt: post.excerpt || "", // preserve
+        description: post.description || post.excerpt || "", // preserve legacy
+      };
 
       const res = await fetch(`${API}/posts/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: nextContent }),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
