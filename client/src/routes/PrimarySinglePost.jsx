@@ -23,6 +23,30 @@ const CATEGORY_IMAGES = {
 };
 
 // --- helpers for fallback iframe embeds ---
+// Normalize common share links to a canonical player URL
+function normalizeVideoUrl(raw) {
+  if (!raw) return "";
+  const url = raw.trim();
+
+  // YouTube Shorts → watch
+  const shorts = url.match(/youtube\.com\/shorts\/([\w-]{11})/i);
+  if (shorts) return `https://www.youtube.com/watch?v=${shorts[1]}`;
+
+  // youtu.be → watch
+  const yb = url.match(/youtu\.be\/([\w-]{11})(\?.*)?$/i);
+  if (yb) return `https://www.youtube.com/watch?v=${yb[1]}`;
+
+  // youtube watch already? keep
+  if (/youtube\.com\/watch\?v=/i.test(url)) return url;
+
+  // Vimeo numeric id
+  const vimeo = url.match(/vimeo\.com\/(\d+)/i);
+  if (vimeo) return `https://vimeo.com/${vimeo[1]}`;
+
+  return url;
+}
+
+// Build an iframe src as an ultimate fallback (no SDK)
 function toEmbedUrl(url) {
   const yt = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]{11})/i);
   if (yt) return `https://www.youtube.com/embed/${yt[1]}?rel=0&modestbranding=1`;
@@ -276,31 +300,79 @@ export default function PrimarySinglePost() {
               <h2 className="text-base font-medium text-gray-700">Videos</h2>
               <div className="video-grid">
                 {post.video_urls.map((raw, i) => {
-                  const url = (raw || "").trim();
-                  if (!url) return null;
+                  const original = (raw || "").trim();
+                  if (!original) return null;
 
-                  const useFallback = fallbackIdx.has(i);
+                  // normalize first (handles Shorts & youtu.be)
+                  const url = normalizeVideoUrl(original);
+
                   const canPlay = ReactPlayer.canPlay(url);
+                  // If ReactPlayer can't play, go straight to iframe fallback
+                  if (!canPlay) {
+                    console.warn("[Video] Unplayable via SDK → using iframe fallback:", {
+                      original,
+                      url,
+                    });
+                    return (
+                      <div key={`${i}-${url}`} className="player-wrapper bg-black/5">
+                        <FallbackEmbed url={url} />
+                      </div>
+                    );
+                  }
 
                   return (
                     <div key={`${i}-${url}`} className="player-wrapper bg-black/5">
-                      {!useFallback && canPlay ? (
-                        <ReactPlayer
-                          url={url}
-                          width="100%"
-                          height="100%"
-                          controls
-                          playsinline
-                          style={{ position: "absolute", top: 0, left: 0 }}
-                          config={{ youtube: { playerVars: { rel: 0, modestbranding: 1 } } }}
-                          onError={(e) => {
-                            console.warn("ReactPlayer error:", url, e);
-                            setFallbackIdx((prev) => new Set(prev).add(i));
-                          }}
-                        />
-                      ) : (
-                        <FallbackEmbed url={url} />
-                      )}
+                      <ReactPlayer
+                        url={url}
+                        width="100%"
+                        height="100%"
+                        controls
+                        playsinline
+                        style={{ position: "absolute", top: 0, left: 0 }}
+                        config={{
+                          youtube: {
+                            playerVars: {
+                              // passing origin helps some browsers/extensions
+                              origin:
+                                typeof window !== "undefined" ? window.location.origin : undefined,
+                              rel: 0,
+                              modestbranding: 1,
+                            },
+                          },
+                        }}
+                        onReady={() => console.log("[Video] ready:", url)}
+                        onPlay={() => console.log("[Video] play:", url)}
+                        onError={(e) => {
+                          console.warn("[Video] ReactPlayer error → switching to iframe:", {
+                            url,
+                            e,
+                          });
+                          // Render fallback inline if the SDK errors out
+                          const container = e?.target?.parentElement;
+                          if (container) {
+                            // swap to fallback iframe
+                            container.innerHTML = "";
+                            const src = toEmbedUrl(url);
+                            if (src) {
+                              const iframe = document.createElement("iframe");
+                              iframe.src = src;
+                              iframe.title = "Video";
+                              iframe.allow =
+                                "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
+                              iframe.allowFullscreen = true;
+                              Object.assign(iframe.style, {
+                                position: "absolute",
+                                top: "0",
+                                left: "0",
+                                width: "100%",
+                                height: "100%",
+                                border: "0",
+                              });
+                              container.appendChild(iframe);
+                            }
+                          }
+                        }}
+                      />
                     </div>
                   );
                 })}
