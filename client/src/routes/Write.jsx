@@ -303,6 +303,7 @@ export default function Write() {
         content: (content || "").trim(),
         description: (excerpt || "").trim(),
         cover_image_url: coverUrl,
+        author_image_url: user?.imageUrl || "",
         featured_slot: featuredSlot, // 👈 includes "portfolio" now
         featured_rank: featuredRank ? Number(featuredRank) : null,
       };

@@ -72,6 +72,11 @@ export default function EditPost() {
   const [showCoverPreview, setShowCoverPreview] = useState(false);
   const coverInputRef = useRef(null);
 
+  // NEW: author avatar
+  const [authorUrl, setAuthorUrl] = useState("");
+  const [authorUploading, setAuthorUploading] = useState(false);
+  const authorInputRef = useRef(null);
+
   // prefill
   useEffect(() => {
     const ctrl = new AbortController();
@@ -90,6 +95,7 @@ export default function EditPost() {
         setFeaturedSlot(data.featured_slot || "none");
         setFeaturedRank(typeof data.featured_rank === "number" ? String(data.featured_rank) : "");
         setCoverUrl(data.cover_image_url || "");
+        setAuthorUrl(data.author_image_url || ""); // 👈 prefill author avatar
 
         setStatus("ok");
       } catch (e) {
@@ -167,6 +173,48 @@ export default function EditPost() {
     setCoverUrl("");
   }
 
+  // NEW: author avatar handlers
+  function pickAuthor() {
+    authorInputRef.current?.click();
+  }
+  async function onSelectAuthor(e) {
+    try {
+      setErrorMsg("");
+      const file = e.target.files?.[0];
+      if (!file) return;
+      if (!file.type.startsWith("image/")) {
+        setErrorMsg("Please choose an image file.");
+        return;
+      }
+      if (!CLOUD_NAME || !UPLOAD_PRESET) {
+        setErrorMsg("Missing Cloudinary config. Add VITE_CLOUDINARY_* env vars.");
+        return;
+      }
+      setAuthorUploading(true);
+      const raw = await uploadToCloudinary(file, {
+        cloudName: CLOUD_NAME,
+        uploadPreset: UPLOAD_PRESET,
+      });
+      // Friendly avatar size
+      const url = withTransform(raw, {
+        width: 256,
+        height: 256,
+        crop: "fill",
+        gravity: "face",
+        quality: 85,
+      });
+      setAuthorUrl(url);
+    } catch (err) {
+      setErrorMsg(err.message || "Avatar upload failed.");
+    } finally {
+      setAuthorUploading(false);
+      e.target.value = "";
+    }
+  }
+  function removeAuthor() {
+    setAuthorUrl("");
+  }
+
   async function handleSave(e) {
     e.preventDefault();
     setErrorMsg("");
@@ -191,6 +239,7 @@ export default function EditPost() {
         featured_slot: featuredSlot,
         featured_rank: featuredRank ? Number(featuredRank) : null,
         cover_image_url: coverUrl,
+        author_image_url: authorUrl, // 👈 include avatar on save
       };
 
       const res = await fetch(`${API}/posts/${id}`, {
@@ -375,6 +424,48 @@ export default function EditPost() {
           <div className="mt-1 text-xs text-gray-500 text-right">
             {contentLen}/{CONTENT_MAX} (plain text)
           </div>
+        </div>
+
+        {/* NEW: Author avatar controls */}
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={pickAuthor}
+            className="w-max p-2 shadow-md rounded-xl text-sm text-gray-700 bg-white border"
+            disabled={authorUploading}
+            title="Upload/Change author avatar"
+          >
+            {authorUploading
+              ? "Uploading…"
+              : authorUrl
+                ? "Change Author Avatar"
+                : "Add Author Avatar"}
+          </button>
+
+          {authorUrl && (
+            <>
+              <img
+                src={authorUrl}
+                alt="Author avatar preview"
+                className="h-16 w-16 object-cover rounded-full border"
+              />
+              <button
+                type="button"
+                onClick={removeAuthor}
+                className="text-xs px-2 py-1 rounded border hover:bg-gray-50"
+              >
+                Remove
+              </button>
+            </>
+          )}
+
+          <input
+            ref={authorInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={onSelectAuthor}
+          />
         </div>
 
         {/* Featured (now includes "portfolio") */}
