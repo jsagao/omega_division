@@ -47,25 +47,35 @@ function stripHtml(html) {
   return (div.textContent || div.innerText || "").trim();
 }
 
+// Robust YouTube ID extraction (watch, youtu.be, shorts, embed, with extra params)
 function getYouTubeId(url) {
   if (!url) return null;
   const u = url.trim();
-  // shorts → id
-  const mShort = u.match(/youtube\.com\/shorts\/([\w-]{11})/i);
-  if (mShort) return mShort[1];
-  // youtu.be → id
-  const mBe = u.match(/youtu\.be\/([\w-]{11})/i);
-  if (mBe) return mBe[1];
-  // watch?v= → id
-  const mWatch = u.match(/[?&]v=([\w-]{11})/i);
+
+  // 1) common patterns
+  const mWatch = u.match(/[?&]v=([A-Za-z0-9_-]{11})/i);
   if (mWatch) return mWatch[1];
-  return null;
+
+  const mBe = u.match(/youtu\.be\/([A-Za-z0-9_-]{11})(?:[?&].*)?$/i);
+  if (mBe) return mBe[1];
+
+  const mShort = u.match(/youtube\.com\/shorts\/([A-Za-z0-9_-]{11})(?:[?&].*)?$/i);
+  if (mShort) return mShort[1];
+
+  const mEmbed = u.match(/youtube\.com\/embed\/([A-Za-z0-9_-]{11})(?:[?&].*)?$/i);
+  if (mEmbed) return mEmbed[1];
+
+  // 2) last resort: find any 11-char token after youtube domain
+  const mAny = u.match(/(?:youtube\.com|youtu\.be)[^A-Za-z0-9_-]([A-Za-z0-9_-]{11})/i);
+  return mAny ? mAny[1] : null;
 }
+
 function getVimeoId(url) {
   if (!url) return null;
   const m = url.trim().match(/vimeo\.com\/(\d+)/i);
   return m ? m[1] : null;
 }
+
 function isDirectVideo(url) {
   return !!url && /\.(mp4|webm|ogg)(\?.*)?$/i.test(url.trim());
 }
@@ -108,15 +118,13 @@ export default function Write() {
   // Debounce to prevent double-insert from weird paste/drop combos
   const insertingRef = useRef(false);
 
-  // Track pending images (blob URLs) to upload on publish
-  // Each: { tempUrl: string, file: File }
+  // Track pending images
   const [pendingImages, setPendingImages] = useState([]);
 
   // Acquire quill instance safely
   useEffect(() => {
     let done = false;
     let retries = 0;
-
     function tryGet() {
       if (done) return;
       const rq = rqRef.current;
@@ -131,12 +139,9 @@ export default function Write() {
           done = true;
           return;
         }
-      } catch {
-        // not ready yet
-      }
+      } catch {}
       if (retries++ < 30) requestAnimationFrame(tryGet);
     }
-
     requestAnimationFrame(tryGet);
     return () => {
       done = true;
@@ -209,7 +214,6 @@ export default function Write() {
     if (!file.type.startsWith("image/")) throw new Error("Please choose an image file.");
     if (!quill) throw new Error("Editor not ready yet. Try again in a moment.");
 
-    // Prevent accidental double-calls
     if (insertingRef.current) return;
     insertingRef.current = true;
     setTimeout(() => (insertingRef.current = false), 200);
@@ -257,10 +261,8 @@ export default function Write() {
       if (!dt || !dt.files || dt.files.length === 0) return;
       const file = Array.from(dt.files).find((f) => f.type.startsWith("image/"));
       if (!file) return;
-
       e.preventDefault();
       e.stopPropagation();
-
       try {
         await insertLocalImage(file);
       } catch (err) {
@@ -273,10 +275,8 @@ export default function Write() {
         f.type.startsWith("image/")
       );
       if (!file) return;
-
       e.preventDefault();
       e.stopPropagation();
-
       try {
         await insertLocalImage(file);
       } catch (err) {
@@ -286,7 +286,6 @@ export default function Write() {
 
     root.addEventListener("drop", handleDrop, { passive: false });
     root.addEventListener("paste", handlePaste);
-
     handlersBoundRef.current = true;
 
     return () => {
@@ -320,33 +319,26 @@ export default function Write() {
   // --- On Publish: upload pending blob images and rewrite the HTML ---
   async function resolveEditorImages(html, pending) {
     if (!html) return html;
-
     let nextHtml = html;
 
-    // Replace temp blob URLs we inserted
     for (const { tempUrl, file } of pending) {
       if (!nextHtml.includes(tempUrl)) continue;
-
       if (!CLOUD_NAME || !UPLOAD_PRESET) {
         throw new Error("Missing Cloudinary config. Add VITE_CLOUDINARY_* env vars.");
       }
-
       const uploadedUrl = await uploadToCloudinary(file, {
         cloudName: CLOUD_NAME,
         uploadPreset: UPLOAD_PRESET,
       });
-
       const finalUrl = withTransform(uploadedUrl, {
         width: EDITOR_IMG_WIDTH,
         quality: EDITOR_IMG_QUALITY,
         crop: EDITOR_IMG_CROP,
       });
-
       nextHtml = nextHtml.split(tempUrl).join(finalUrl);
       URL.revokeObjectURL(tempUrl);
     }
 
-    // Convert <img src="data:image/..."> → upload → replace
     const dataUrlRegex = /<img[^>]+src=["'](data:image\/[^"']+)["'][^>]*>/gi;
     const matches = [...nextHtml.matchAll(dataUrlRegex)];
     for (const m of matches) {
@@ -363,11 +355,8 @@ export default function Write() {
           crop: EDITOR_IMG_CROP,
         });
         nextHtml = nextHtml.split(dataUrl).join(finalUrl);
-      } catch {
-        // ignore this one
-      }
+      } catch {}
     }
-
     return nextHtml;
   }
 
@@ -427,7 +416,6 @@ export default function Write() {
     try {
       setSubmitting(true);
 
-      // Resolve editor images first
       const resolvedHtml = await resolveEditorImages(content, pendingImages);
 
       const authorName =
@@ -462,7 +450,6 @@ export default function Write() {
       setErrorMsg(err.message || "Something went wrong while publishing.");
     } finally {
       setSubmitting(false);
-      // clear pending blobs to avoid leaks if you stay on page
       pendingImages.forEach(({ tempUrl }) => URL.revokeObjectURL(tempUrl));
       setPendingImages([]);
     }
@@ -470,15 +457,27 @@ export default function Write() {
 
   return (
     <div className="h-[calc(100vh-64px)] md:h-[calc(100vh-80px)] flex flex-col gap-6 m-11">
-      {/* Keep editor images responsive within Quill + video preview styles */}
+      {/* Quill & video preview styles + kill gray box on LiteYouTube */}
       <style>{`
         .ql-editor img{max-width:100%;height:auto;display:block;margin:1rem auto;}
+
         .video-grid { display: grid; gap: 1rem; }
         @media (min-width: 768px) { .video-grid { grid-template-columns: 1fr 1fr; } }
+
         .player-wrapper { position: relative; padding-top: 56.25%; border-radius: 0.75rem; overflow: hidden; }
         .player-wrapper iframe, .player-wrapper video { position:absolute; top:0; left:0; width:100%; height:100%; border:0; }
+
+        /* LiteYouTubeEmbed overrides */
         .yt-card { border-radius: 0.75rem; overflow: hidden; }
-        .yt-card .yt-lite { border-radius: 0.75rem; }
+        .yt-card .yt-lite{
+          background: transparent !important;
+          aspect-ratio: 16/9;
+          width: 100%;
+          height: auto;
+          display: block;
+        }
+        .yt-card .yt-lite::before{ content: none !important; }
+        .yt-card .yt-lite > img{ width:100%; height:100%; object-fit: cover; }
       `}</style>
 
       <h1 className="text-xl font-light">Create a New Post</h1>
@@ -598,7 +597,7 @@ export default function Write() {
           </div>
         </div>
 
-        {/* Editor (no immediate uploads; paste/drop/toolbar insert blob URLs) */}
+        {/* Editor */}
         <div>
           <ReactQuill
             ref={setRQ}
