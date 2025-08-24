@@ -7,7 +7,7 @@ import { useNavigate } from "react-router-dom";
 import "react-quill-new/dist/quill.snow.css";
 import ReactQuill from "react-quill-new";
 
-// Cloudinary
+// Cloudinary helpers
 import { uploadToCloudinary } from "../utils/uploadCloudinary";
 import { withTransform } from "../utils/withTransform";
 
@@ -16,11 +16,12 @@ const API = import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8000";
 const CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
 const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
 
-// Cloudinary transform defaults (editor-embedded images)
-const EDITOR_IMG_WIDTH = 900; // change if you want smaller/larger
+// Transform defaults for final images
+const EDITOR_IMG_WIDTH = 900;
 const EDITOR_IMG_QUALITY = 80; // 1..100
-const EDITOR_IMG_CROP = "limit"; // don't upscale
+const EDITOR_IMG_CROP = "limit";
 
+// Categories
 const categories = [
   { name: "Programming", value: "Programming" },
   { name: "Data Science", value: "Data-science" },
@@ -30,6 +31,7 @@ const categories = [
   { name: "Travel", value: "Travel" },
 ];
 
+// Limits
 const TITLE_MAX = 100;
 const EXCERPT_MAX = 250;
 const CONTENT_MAX = 5000;
@@ -61,17 +63,24 @@ export default function Write() {
   const [errorMsg, setErrorMsg] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  // ReactQuill ref & safe editor acquisition
+  // ReactQuill refs
   const rqRef = useRef(null);
   const [quill, setQuill] = useState(null);
-
-  // near other refs
-  const handlersBoundRef = useRef(false);
-
   const setRQ = useCallback((instance) => {
     rqRef.current = instance || null;
   }, []);
 
+  // Prevent duplicate handler bindings (StrictMode)
+  const handlersBoundRef = useRef(false);
+
+  // Debounce to prevent double-insert from weird paste/drop combos
+  const insertingRef = useRef(false);
+
+  // Track pending images we inserted as blob URLs so we can upload them on publish
+  // Each item: { tempUrl: string, file: File }
+  const [pendingImages, setPendingImages] = useState([]);
+
+  // Acquire quill instance safely
   useEffect(() => {
     let done = false;
     let retries = 0;
@@ -126,7 +135,7 @@ export default function Write() {
     if (nextPlain.length <= CONTENT_MAX) setContent(html);
   }
 
-  // COVER IMAGE
+  // COVER IMAGE (uploads immediately; keep as-is)
   const coverInputRef = useRef(null);
   function pickCover() {
     coverInputRef.current?.click();
@@ -149,7 +158,6 @@ export default function Write() {
         cloudName: CLOUD_NAME,
         uploadPreset: UPLOAD_PRESET,
       });
-      // optional: also transform cover to a friendly width for previews
       const url = withTransform(rawUrl, {
         width: 1600,
         quality: 85,
@@ -164,58 +172,52 @@ export default function Write() {
     }
   }
 
-  // EMBED IMAGE (toolbar, paste, drag&drop) — ALWAYS transformed
+  // Insert a local (blob) image into Quill now; upload later on Publish
+  async function insertLocalImage(file) {
+    if (!file.type.startsWith("image/")) throw new Error("Please choose an image file.");
+    if (!quill) throw new Error("Editor not ready yet. Try again in a moment.");
+
+    // Prevent accidental double-calls (some browsers dispatch both HTML and File paths)
+    if (insertingRef.current) return;
+    insertingRef.current = true;
+    setTimeout(() => (insertingRef.current = false), 200);
+
+    const tempUrl = URL.createObjectURL(file);
+    const range = quill.getSelection(true) || { index: quill.getLength(), length: 0 };
+    quill.insertEmbed(range.index, "image", tempUrl, "user");
+    quill.setSelection(range.index + 1, 0);
+
+    setPendingImages((prev) => [...prev, { tempUrl, file }]);
+  }
+
+  // Toolbar image button opens picker → insert blob
   const embedInputRef = useRef(null);
   function pickEmbedImage() {
     embedInputRef.current?.click();
   }
-
-  async function uploadAndInsertIntoEditor(file) {
-    if (!file.type.startsWith("image/")) throw new Error("Please drop an image file.");
-    if (!CLOUD_NAME || !UPLOAD_PRESET)
-      throw new Error("Missing Cloudinary config. Add VITE_CLOUDINARY_* env vars.");
-    if (!quill) throw new Error("Editor not ready yet. Try again in a moment.");
-
-    const rawUrl = await uploadToCloudinary(file, {
-      cloudName: CLOUD_NAME,
-      uploadPreset: UPLOAD_PRESET,
-    });
-
-    const url = withTransform(rawUrl, {
-      width: EDITOR_IMG_WIDTH,
-      quality: EDITOR_IMG_QUALITY,
-      crop: EDITOR_IMG_CROP,
-    });
-
-    const range = quill.getSelection(true) || { index: quill.getLength(), length: 0 };
-    quill.insertEmbed(range.index, "image", url, "user");
-    quill.setSelection(range.index + 1, 0);
-  }
-
   async function onSelectEmbed(e) {
     try {
       const file = e.target.files?.[0];
       if (!file) return;
-      await uploadAndInsertIntoEditor(file);
+      await insertLocalImage(file);
     } catch (err) {
-      setErrorMsg(err.message || "Image upload failed.");
+      setErrorMsg(err.message || "Image insert failed.");
     } finally {
       e.target.value = "";
     }
   }
 
-  // drag & drop / paste
-  // After useUser() and before the form, prefill coverUrl once
+  // Prefill cover with user avatar once (optional)
   useEffect(() => {
     if (!coverUrl && user?.imageUrl) {
       setCoverUrl(user.imageUrl);
     }
   }, [user, coverUrl]);
+
+  // Drag & drop / paste → insert blob, DO NOT upload yet
   useEffect(() => {
     if (!quill) return;
-
-    // Prevent multiple registrations (StrictMode double-invoke)
-    if (handlersBoundRef.current) return;
+    if (handlersBoundRef.current) return; // avoid multiple bindings
 
     const root = quill.root;
 
@@ -225,13 +227,13 @@ export default function Write() {
       const file = Array.from(dt.files).find((f) => f.type.startsWith("image/"));
       if (!file) return;
 
-      e.preventDefault(); // stop Quill/browser from inserting a blob image
+      e.preventDefault();
       e.stopPropagation();
 
       try {
-        await uploadAndInsertIntoEditor(file);
+        await insertLocalImage(file);
       } catch (err) {
-        setErrorMsg(err.message || "Upload failed.");
+        setErrorMsg(err.message || "Image insert failed.");
       }
     }
 
@@ -241,13 +243,13 @@ export default function Write() {
       );
       if (!file) return;
 
-      e.preventDefault(); // stop default paste of the raw image
+      e.preventDefault();
       e.stopPropagation();
 
       try {
-        await uploadAndInsertIntoEditor(file);
+        await insertLocalImage(file);
       } catch (err) {
-        setErrorMsg(err.message || "Upload failed.");
+        setErrorMsg(err.message || "Image insert failed.");
       }
     }
 
@@ -262,7 +264,8 @@ export default function Write() {
       handlersBoundRef.current = false;
     };
   }, [quill]);
-  // Quill modules
+
+  // Quill modules (toolbar)
   const quillModules = useMemo(
     () => ({
       toolbar: {
@@ -282,6 +285,77 @@ export default function Write() {
     }),
     []
   );
+
+  // --- On Publish: upload pending blob images and rewrite the HTML ---
+  async function resolveEditorImages(html, pending) {
+    if (!html) return html;
+
+    // Create a mutable copy
+    let nextHtml = html;
+
+    // 1) Replace all temp blob URLs we tracked
+    for (const { tempUrl, file } of pending) {
+      // still present?
+      if (!nextHtml.includes(tempUrl)) continue;
+
+      if (!CLOUD_NAME || !UPLOAD_PRESET) {
+        throw new Error("Missing Cloudinary config. Add VITE_CLOUDINARY_* env vars.");
+      }
+
+      const uploadedUrl = await uploadToCloudinary(file, {
+        cloudName: CLOUD_NAME,
+        uploadPreset: UPLOAD_PRESET,
+      });
+
+      const finalUrl = withTransform(uploadedUrl, {
+        width: EDITOR_IMG_WIDTH,
+        quality: EDITOR_IMG_QUALITY,
+        crop: EDITOR_IMG_CROP,
+      });
+
+      // Replace every occurrence (just in case)
+      nextHtml = nextHtml.split(tempUrl).join(finalUrl);
+
+      // free the object URL
+      URL.revokeObjectURL(tempUrl);
+    }
+
+    // 2) Also handle any <img src="data:..."> pasted from clipboard as base64
+    //    Convert them to Blob and upload.
+    const dataUrlRegex = /<img[^>]+src=["'](data:image\/[^"']+)["'][^>]*>/gi;
+    const matches = [...nextHtml.matchAll(dataUrlRegex)];
+    for (const m of matches) {
+      const dataUrl = m[1];
+      try {
+        const file = dataURLtoFile(dataUrl, "pasted-image.png");
+        const uploadedUrl = await uploadToCloudinary(file, {
+          cloudName: CLOUD_NAME,
+          uploadPreset: UPLOAD_PRESET,
+        });
+        const finalUrl = withTransform(uploadedUrl, {
+          width: EDITOR_IMG_WIDTH,
+          quality: EDITOR_IMG_QUALITY,
+          crop: EDITOR_IMG_CROP,
+        });
+        nextHtml = nextHtml.split(dataUrl).join(finalUrl);
+      } catch {
+        // ignore if something goes wrong converting this one
+      }
+    }
+
+    return nextHtml;
+  }
+
+  function dataURLtoFile(dataUrl, filename) {
+    const arr = dataUrl.split(",");
+    const mimeMatch = arr[0].match(/:(.*?);/);
+    const mime = mimeMatch ? mimeMatch[1] : "image/png";
+    const bstr = atob(arr[1] || "");
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) u8arr[n] = bstr.charCodeAt(n);
+    return new File([u8arr], filename, { type: mime });
+  }
 
   // submit
   if (!isLoaded) {
@@ -314,22 +388,28 @@ export default function Write() {
 
     try {
       setSubmitting(true);
+
+      // 1) Resolve all editor images (upload blobs/data URLs -> Cloudinary)
+      const resolvedHtml = await resolveEditorImages(content, pendingImages);
+
       const authorName =
         user?.fullName || user?.username || user?.primaryEmailAddress?.emailAddress || "anonymous";
 
+      // 2) Build payload using resolvedHtml
       const payload = {
         title: title.trim(),
         category,
         author: authorName,
         excerpt: excerpt.trim(),
-        content: (content || "").trim(),
+        content: (resolvedHtml || "").trim(),
         description: (excerpt || "").trim(),
         cover_image_url: coverUrl,
         author_image_url: user?.imageUrl || "",
-        featured_slot: featuredSlot, // 👈 includes "portfolio" now
+        featured_slot: featuredSlot,
         featured_rank: featuredRank ? Number(featuredRank) : null,
       };
 
+      // 3) Send
       const res = await fetch(`${API}/posts`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -345,6 +425,9 @@ export default function Write() {
       setErrorMsg(err.message || "Something went wrong while publishing.");
     } finally {
       setSubmitting(false);
+      // clear pending blobs to avoid leaks if you stay on page
+      pendingImages.forEach(({ tempUrl }) => URL.revokeObjectURL(tempUrl));
+      setPendingImages([]);
     }
   }
 
@@ -448,7 +531,7 @@ export default function Write() {
           </select>
         </div>
 
-        {/* Excerpt (bigger) */}
+        {/* Excerpt */}
         <div>
           <textarea
             name="desc"
@@ -470,7 +553,7 @@ export default function Write() {
           </div>
         </div>
 
-        {/* Editor (larger) + toolbar image picker input */}
+        {/* Editor (no immediate uploads; paste/drop/toolbar insert blob URLs) */}
         <div>
           <ReactQuill
             ref={setRQ}
@@ -492,7 +575,7 @@ export default function Write() {
           />
         </div>
 
-        {/* Featured controls (now includes "portfolio") */}
+        {/* Featured controls */}
         <fieldset className="flex flex-wrap gap-4 items-center">
           <legend className="text-gray-500 font-medium">Feature:</legend>
           {["none", "main", "mini", "portfolio"].map((opt) => (
