@@ -1,5 +1,6 @@
 // src/routes/Portfolio.jsx
 import React, { useEffect, useMemo, useState } from "react";
+import { useUser } from "@clerk/clerk-react";
 
 const API = import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8000";
 
@@ -14,8 +15,12 @@ function firstNonEmpty(...vals) {
 }
 
 export default function Portfolio() {
+  const { user } = useUser();
+  const isAdmin = user?.publicMetadata?.role === "admin";
+
   const [items, setItems] = useState([]);
   const [status, setStatus] = useState("loading"); // loading | ok | error
+  const [deletingId, setDeletingId] = useState(null); // track which post is deleting
 
   useEffect(() => {
     let alive = true;
@@ -42,7 +47,6 @@ export default function Portfolio() {
       const title = p.title || "Untitled";
       const imageUrl = p.cover_image_url || "";
       const desc = firstNonEmpty(p.excerpt, toPlain(p.content), p.description);
-      // Faux author block from your single-string author
       const authorName = p.author || "anonymous";
       return {
         id: p.id,
@@ -59,12 +63,33 @@ export default function Portfolio() {
         author: {
           name: authorName,
           role: "Contributor",
-          href: `/author/${encodeURIComponent(authorName.toLowerCase().replace(/\s+/g, "-"))}`,
-          imageUrl: "/featured1.jpeg", // fallback avatar; swap if you add author avatars later
+          href: "/about",
+          imageUrl: "/featured1.jpeg",
         },
       };
     });
   }, [items]);
+
+  async function handleDelete(postId, postTitle) {
+    if (!isAdmin) return;
+    const ok = window.confirm(`Delete "${postTitle}" from portfolio? This cannot be undone.`);
+    if (!ok) return;
+
+    try {
+      setDeletingId(postId);
+      const res = await fetch(`${API}/posts/${postId}`, { method: "DELETE" });
+      if (!(res.ok || res.status === 204 || res.status === 404)) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+      // Remove locally
+      setItems((prev) => prev.filter((p) => p.id !== postId));
+    } catch (err) {
+      console.error(err);
+      alert("Could not delete the post. Please try again.");
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   if (status === "loading") {
     return (
@@ -152,6 +177,20 @@ export default function Portfolio() {
                       </a>
                     </h3>
                     <p className="mt-5 text-sm/6 text-gray-400">{post.description}</p>
+
+                    {/* Admin-only delete action */}
+                    {isAdmin && (
+                      <div className="mt-3">
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(post.id, post.title)}
+                          disabled={deletingId === post.id}
+                          className="text-sm px-3 py-1.5 rounded border border-red-400/40 text-red-200 hover:bg-red-500/10 disabled:opacity-60"
+                        >
+                          {deletingId === post.id ? "Deleting…" : "Delete"}
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   <div className="mt-6 flex border-t border-white/10 pt-6">
