@@ -22,6 +22,32 @@ const CATEGORY_IMAGES = {
   marketing: "/featured5.jpeg",
 };
 
+// --- helpers for fallback iframe embeds ---
+function toEmbedUrl(url) {
+  const yt = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]{11})/i);
+  if (yt) return `https://www.youtube.com/embed/${yt[1]}?rel=0&modestbranding=1`;
+  const shorts = url.match(/youtube\.com\/shorts\/([\w-]{11})/i);
+  if (shorts) return `https://www.youtube.com/embed/${shorts[1]}?rel=0&modestbranding=1`;
+  const vimeo = url.match(/vimeo\.com\/(\d+)/i);
+  if (vimeo) return `https://player.vimeo.com/video/${vimeo[1]}`;
+  return null;
+}
+
+function FallbackEmbed({ url }) {
+  const src = toEmbedUrl(url);
+  if (!src) return null;
+  return (
+    <iframe
+      src={src}
+      className="react-player"
+      title="Video"
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+      allowFullScreen
+      style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", border: 0 }}
+    />
+  );
+}
+
 export default function PrimarySinglePost() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -37,6 +63,9 @@ export default function PrimarySinglePost() {
   const [appendHtml, setAppendHtml] = useState("");
   const [appending, setAppending] = useState(false);
   const quillRef = useRef(null);
+
+  // track which video cards should render fallback iframe
+  const [fallbackIdx, setFallbackIdx] = useState(() => new Set());
 
   useEffect(() => {
     const ctrl = new AbortController();
@@ -186,6 +215,7 @@ export default function PrimarySinglePost() {
         .post-update h3 { font-weight: 600; margin-top: 0; margin-bottom: 0.5rem; }
         .post-update__time { font-weight: 400; color: #6b7280; font-size: 0.9em; }
 
+        /* video layout */
         .video-grid { display: grid; gap: 1rem; }
         @media (min-width: 768px) { .video-grid { grid-template-columns: 1fr 1fr; } }
         .player-wrapper { position: relative; padding-top: 56.25%; border-radius: 0.75rem; overflow: hidden; }
@@ -247,21 +277,30 @@ export default function PrimarySinglePost() {
               <div className="video-grid">
                 {post.video_urls.map((raw, i) => {
                   const url = (raw || "").trim();
-                  if (!url || !ReactPlayer.canPlay(url)) return null; // 👈 guard
+                  if (!url) return null;
+
+                  const useFallback = fallbackIdx.has(i);
+                  const canPlay = ReactPlayer.canPlay(url);
+
                   return (
                     <div key={`${i}-${url}`} className="player-wrapper bg-black/5">
-                      <ReactPlayer
-                        url={url}
-                        width="100%"
-                        height="100%"
-                        controls
-                        playsinline
-                        style={{ position: "absolute", top: 0, left: 0 }} // ensure fill
-                        onError={(e) => console.warn("ReactPlayer error:", url, e)} // 👈 surface errors
-                        config={{
-                          youtube: { playerVars: { rel: 0, modestbranding: 1 } },
-                        }}
-                      />
+                      {!useFallback && canPlay ? (
+                        <ReactPlayer
+                          url={url}
+                          width="100%"
+                          height="100%"
+                          controls
+                          playsinline
+                          style={{ position: "absolute", top: 0, left: 0 }}
+                          config={{ youtube: { playerVars: { rel: 0, modestbranding: 1 } } }}
+                          onError={(e) => {
+                            console.warn("ReactPlayer error:", url, e);
+                            setFallbackIdx((prev) => new Set(prev).add(i));
+                          }}
+                        />
+                      ) : (
+                        <FallbackEmbed url={url} />
+                      )}
                     </div>
                   );
                 })}
