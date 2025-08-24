@@ -65,6 +65,9 @@ export default function Write() {
   const rqRef = useRef(null);
   const [quill, setQuill] = useState(null);
 
+  // near other refs
+  const handlersBoundRef = useRef(false);
+
   const setRQ = useCallback((instance) => {
     rqRef.current = instance || null;
   }, []);
@@ -210,36 +213,55 @@ export default function Write() {
   }, [user, coverUrl]);
   useEffect(() => {
     if (!quill) return;
-    const root = quill.root;
-    if (!root) return;
 
-    function handleDrop(e) {
+    // Prevent multiple registrations (StrictMode double-invoke)
+    if (handlersBoundRef.current) return;
+
+    const root = quill.root;
+
+    async function handleDrop(e) {
       const dt = e.dataTransfer;
       if (!dt || !dt.files || dt.files.length === 0) return;
       const file = Array.from(dt.files).find((f) => f.type.startsWith("image/"));
       if (!file) return;
-      e.preventDefault();
+
+      e.preventDefault(); // stop Quill/browser from inserting a blob image
       e.stopPropagation();
-      uploadAndInsertIntoEditor(file).catch((err) => setErrorMsg(err.message || "Upload failed."));
+
+      try {
+        await uploadAndInsertIntoEditor(file);
+      } catch (err) {
+        setErrorMsg(err.message || "Upload failed.");
+      }
     }
 
-    function handlePaste(e) {
+    async function handlePaste(e) {
       const file = Array.from(e.clipboardData?.files || []).find((f) =>
         f.type.startsWith("image/")
       );
       if (!file) return;
-      e.preventDefault();
-      uploadAndInsertIntoEditor(file).catch((err) => setErrorMsg(err.message || "Upload failed."));
+
+      e.preventDefault(); // stop default paste of the raw image
+      e.stopPropagation();
+
+      try {
+        await uploadAndInsertIntoEditor(file);
+      } catch (err) {
+        setErrorMsg(err.message || "Upload failed.");
+      }
     }
 
-    root.addEventListener("drop", handleDrop);
+    root.addEventListener("drop", handleDrop, { passive: false });
     root.addEventListener("paste", handlePaste);
+
+    handlersBoundRef.current = true;
+
     return () => {
       root.removeEventListener("drop", handleDrop);
       root.removeEventListener("paste", handlePaste);
+      handlersBoundRef.current = false;
     };
   }, [quill]);
-
   // Quill modules
   const quillModules = useMemo(
     () => ({
