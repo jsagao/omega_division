@@ -9,6 +9,7 @@ import Comments from "../component/Comments.jsx";
 import ConfirmModal from "../component/ConfirmModal.jsx";
 import DOMPurify from "dompurify";
 import ReactQuill from "react-quill-new";
+import ReactPlayer from "react-player/lazy"; // 👈 NEW
 import "react-quill-new/dist/quill.snow.css";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:8000";
@@ -55,7 +56,6 @@ export default function PrimarySinglePost() {
     return () => ctrl.abort();
   }, [id]);
 
-  // Hero: prefer cover → author avatar → category fallback
   const heroSrc = useMemo(() => {
     if (!post) return "/featured2.jpeg";
     const cover = (post.cover_image_url || "").trim();
@@ -90,7 +90,6 @@ export default function PrimarySinglePost() {
 
     try {
       setAppending(true);
-
       const stamp = new Date().toLocaleString();
       const updateBlock = `
         <hr/>
@@ -99,15 +98,13 @@ export default function PrimarySinglePost() {
           ${html}
         </section>
       `;
-
       const base = (post.content || post.description || "").trim();
       const nextContent = base ? `${base}\n${updateBlock}` : updateBlock;
 
-      // 👇 Keep the existing excerpt/description so backend won't regenerate it
       const payload = {
         content: nextContent,
-        excerpt: post.excerpt || "", // preserve
-        description: post.description || post.excerpt || "", // preserve legacy
+        excerpt: post.excerpt || "",
+        description: post.description || post.excerpt || "",
       };
 
       const res = await fetch(`${API}/posts/${id}`, {
@@ -138,7 +135,6 @@ export default function PrimarySinglePost() {
       </div>
     );
   }
-
   if (status === "notfound") {
     return (
       <div className="mx-auto max-w-[1100px] px-4 py-8">
@@ -149,7 +145,6 @@ export default function PrimarySinglePost() {
       </div>
     );
   }
-
   if (status === "error") {
     return (
       <div className="mx-auto max-w-[1100px] px-4 py-8">
@@ -161,21 +156,14 @@ export default function PrimarySinglePost() {
     );
   }
 
-  // status === 'ok'
   return (
     <div className="mx-auto max-w-screen-xl px-4 py-8 flex flex-col gap-10">
-      {/* Reader CSS */}
       <style>{`
         .post-content { line-height: 1.75; }
         .post-content p { margin: 0.8rem 0; }
-        .post-content blockquote {
-          border-left: 4px solid #e5e7eb; padding-left: 1rem; color: #374151; margin: 1rem 0;
-        }
-        .post-content pre, .post-content code {
-          background: #f8fafc; border-radius: 0.5rem; padding: 0.25rem 0.5rem;
-          font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-          font-size: 0.95em;
-        }
+        .post-content blockquote { border-left: 4px solid #e5e7eb; padding-left: 1rem; color: #374151; margin: 1rem 0; }
+        .post-content pre, .post-content code { background: #f8fafc; border-radius: 0.5rem; padding: 0.25rem 0.5rem;
+          font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; font-size: 0.95em; }
         .post-content pre { padding: 0.75rem 1rem; overflow:auto; }
         .post-content ul, .post-content ol { margin: 0.75rem 0 0.75rem 1.5rem; }
         .post-content li { margin: 0.25rem 0; }
@@ -190,6 +178,12 @@ export default function PrimarySinglePost() {
         .post-update { background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 0.75rem; padding: 1rem; margin: 1.25rem 0; }
         .post-update h3 { font-weight: 600; margin-top: 0; margin-bottom: 0.5rem; }
         .post-update__time { font-weight: 400; color: #6b7280; font-size: 0.9em; }
+
+        /* NEW: video layout */
+        .video-grid { display: grid; gap: 1rem; }
+        @media (min-width: 768px) { .video-grid { grid-template-columns: 1fr 1fr; } }
+        .player-wrapper { position: relative; padding-top: 56.25%; border-radius: 0.75rem; overflow: hidden; }
+        .player-wrapper .react-player { position: absolute; top: 0; left: 0; }
       `}</style>
 
       {/* Header + hero */}
@@ -198,7 +192,6 @@ export default function PrimarySinglePost() {
           <h1 className="text-xl md:text-3xl xl:text-4xl 2xl:text-5xl font-semibold text-black">
             {post.title}
           </h1>
-
           <div className="flex flex-wrap items-center gap-2 text-gray-500 text-sm">
             <span>By</span>
             <Link to="/about" className="text-indigo-700 font-semibold hover:underline">
@@ -212,11 +205,9 @@ export default function PrimarySinglePost() {
               {post.category || "general"}
             </Link>
           </div>
-
           <p className="text-gray-600 leading-relaxed">{post.excerpt || ""}</p>
         </div>
 
-        {/* Hero image */}
         <div className="w-full lg:w-2/5 mt-4 lg:mt-0 order-[-1] lg:order-none">
           <Image
             src={heroSrc}
@@ -228,8 +219,9 @@ export default function PrimarySinglePost() {
         </div>
       </div>
 
-      {/* Body + sidebar */}
+      {/* Body + videos + sidebar */}
       <div className="flex flex-col md:flex-row gap-8">
+        {/* Main */}
         <div className="md:flex-1 lg:w-3/4 lg:text-lg flex flex-col gap-6">
           <div
             className="post-content"
@@ -237,19 +229,38 @@ export default function PrimarySinglePost() {
               __html: DOMPurify.sanitize(post.content || post.description || ""),
             }}
           />
+
+          {/* NEW: Videos */}
+          {Array.isArray(post.video_urls) && post.video_urls.length > 0 && (
+            <section className="flex flex-col gap-3">
+              <h2 className="text-base font-medium text-gray-700">Videos</h2>
+              <div className="video-grid">
+                {post.video_urls.map((url) => (
+                  <div key={url} className="player-wrapper bg-black/5">
+                    <ReactPlayer
+                      className="react-player"
+                      url={url}
+                      width="100%"
+                      height="100%"
+                      controls
+                      playsinline
+                      config={{ youtube: { playerVars: { rel: 0 } } }}
+                    />
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
         </div>
 
-        {/* Sidebar */}
+        {/* Sidebar (unchanged) */}
         <aside className="md:w-80 lg:w-50 px-0 md:px-2 lg:px-2">
           <div className="px-4 py-2 h-max sticky top-8 bg-transparent">
             <h2 className="mb-4 text-sm font-medium">Author</h2>
-
             <div className="flex flex-col gap-4">
               <div className="flex items-center gap-4">
                 <Image
-                  src={
-                    (post?.author_image_url || "").trim() || "/default-avatar.png" // 👈 put a Clerk default avatar asset here
-                  }
+                  src={(post?.author_image_url || "").trim() || "/default-avatar.png"}
                   alt={`${post?.author || "anonymous"} avatar`}
                   className="w-12 h-12 rounded-full object-cover"
                   w="48"
@@ -259,11 +270,9 @@ export default function PrimarySinglePost() {
                   {post.author || "anonymous"}
                 </Link>
               </div>
-
               <p className="text-sm text-gray-500">
                 Passionate writer about {post.category || "tech"}.
               </p>
-
               <div className="flex gap-3">
                 <a href="https://facebook.com" target="_blank" rel="noreferrer">
                   <Image src="/facebook.svg" alt="Facebook" className="w-5 h-5" w="20" h="20" />
@@ -274,7 +283,6 @@ export default function PrimarySinglePost() {
               </div>
             </div>
 
-            {/* Admin-only actions */}
             {isAdmin && (
               <>
                 <PostMenuActions
@@ -336,7 +344,7 @@ export default function PrimarySinglePost() {
 
       <Comments postId={id} />
 
-      {/* Append Update Modal */}
+      {/* Append Update Modal (unchanged) */}
       {isAdmin && appendOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div
