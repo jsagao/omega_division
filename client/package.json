@@ -17,6 +17,7 @@
     "quill": "^2.0.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-player": "^3.3.1",
     "react-quill": "^2.0.0",
     "react-quill-new": "^3.6.0",
     "react-router-dom": "^7.8.0",
@@ -40,5 +41,4 @@
     "tailwindcss": "^3.4.14",
     "vite": "^5.4.10"
   }
-  
 }

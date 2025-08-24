@@ -9,7 +9,7 @@ import Comments from "../component/Comments.jsx";
 import ConfirmModal from "../component/ConfirmModal.jsx";
 import DOMPurify from "dompurify";
 import ReactQuill from "react-quill-new";
-import ReactPlayer from "react-player/lazy"; // 👈 NEW
+import ReactPlayer from "react-player"; // 👈 NEW
 import "react-quill-new/dist/quill.snow.css";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:8000";
