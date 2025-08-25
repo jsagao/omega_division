@@ -20,7 +20,7 @@ export default function Portfolio() {
 
   const [items, setItems] = useState([]);
   const [status, setStatus] = useState("loading"); // loading | ok | error
-  const [deletingId, setDeletingId] = useState(null); // track which post is deleting
+  const [workingId, setWorkingId] = useState(null); // track which post is being updated
 
   useEffect(() => {
     let alive = true;
@@ -33,7 +33,7 @@ export default function Portfolio() {
         if (!alive) return;
         setItems(Array.isArray(data) ? data : []);
         setStatus("ok");
-      } catch (e) {
+      } catch {
         if (alive) setStatus("error");
       }
     })();
@@ -70,24 +70,29 @@ export default function Portfolio() {
     });
   }, [items]);
 
-  async function handleDelete(postId, postTitle) {
+  // 🚫 Do not delete the post; just remove it from portfolio (unset featured_slot / featured_rank)
+  async function handleRemoveFromPortfolio(postId, postTitle) {
     if (!isAdmin) return;
-    const ok = window.confirm(`Delete "${postTitle}" from portfolio? This cannot be undone.`);
+    const ok = window.confirm(
+      `Remove "${postTitle}" from Portfolio? The post will remain published elsewhere.`
+    );
     if (!ok) return;
 
     try {
-      setDeletingId(postId);
-      const res = await fetch(`${API}/posts/${postId}`, { method: "DELETE" });
-      if (!(res.ok || res.status === 204 || res.status === 404)) {
-        throw new Error(`HTTP ${res.status}`);
-      }
-      // Remove locally
+      setWorkingId(postId);
+      const res = await fetch(`${API}/posts/${postId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ featured_slot: "none", featured_rank: null }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      // Remove from local list so UI updates immediately
       setItems((prev) => prev.filter((p) => p.id !== postId));
     } catch (err) {
       console.error(err);
-      alert("Could not delete the post. Please try again.");
+      alert("Could not update the post. Please try again.");
     } finally {
-      setDeletingId(null);
+      setWorkingId(null);
     }
   }
 
@@ -177,20 +182,21 @@ export default function Portfolio() {
                     </h3>
                     <p className="mt-5 text-sm/6 text-gray-400">{post.description}</p>
 
-                    {/* Admin-only delete action */}
+                    {/* Admin-only action: remove from portfolio (do not delete post) */}
                     {isAdmin && (
                       <div className="mt-3">
                         <button
                           type="button"
                           onClick={(e) => {
                             e.preventDefault();
-                            e.stopPropagation(); // ⛔ prevent clicks from hitting the title link
-                            handleDelete(post.id, post.title);
+                            e.stopPropagation();
+                            handleRemoveFromPortfolio(post.id, post.title);
                           }}
-                          disabled={deletingId === post.id}
-                          className="text-sm px-3 py-1.5 rounded border border-red-400/40 text-red-200 hover:bg-red-500/10 disabled:opacity-60"
+                          disabled={workingId === post.id}
+                          className="text-sm px-3 py-1.5 rounded border border-amber-400/40 text-amber-200 hover:bg-amber-500/10 disabled:opacity-60"
+                          title="Remove this post from the Portfolio list only"
                         >
-                          {deletingId === post.id ? "Deleting…" : "Delete"}
+                          {workingId === post.id ? "Updating…" : "Remove from portfolio"}
                         </button>
                       </div>
                     )}
@@ -198,7 +204,7 @@ export default function Portfolio() {
 
                   <div className="mt-6 flex border-t border-white/10 pt-6">
                     <div className="relative flex items-center gap-x-4">
-                      <a href={post.author.href}>
+                      <a href="/about">
                         <img
                           alt=""
                           src={post.author.imageUrl}
@@ -207,7 +213,7 @@ export default function Portfolio() {
                       </a>
                       <div className="text-sm/6">
                         <p className="font-semibold text-white">
-                          <a href={post.author.href}>{post.author.name}</a>
+                          <a href="/about">{post.author.name}</a>
                         </p>
                         <p className="text-gray-400">{post.author.role}</p>
                       </div>
