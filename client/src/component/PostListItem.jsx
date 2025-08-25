@@ -1,7 +1,9 @@
-// src/component/PostListItem.jsx
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useUser } from "@clerk/clerk-react";
 import Image from "./Image";
+
+const API = import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8000";
 
 const CATEGORY_FALLBACKS = {
   programming: "/featured1.jpeg",
@@ -20,17 +22,39 @@ function thumbSrcFor(post) {
   return CATEGORY_FALLBACKS[key] || CATEGORY_FALLBACKS.general;
 }
 
-function authorSlug(author = "anonymous") {
-  return encodeURIComponent(author.toLowerCase().replace(/\s+/g, "-"));
-}
-
-export default function PostListItem({ post, onDelete }) {
+export default function PostListItem({ post, onDeleted }) {
   const { user } = useUser();
   const isAdmin = user?.publicMetadata?.role === "admin";
+  const [deleting, setDeleting] = useState(false);
 
   const title = post?.title || "Untitled";
   const author = post?.author || "anonymous";
   const category = post?.category || "general";
+
+  async function handleDelete(e) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!isAdmin || !post?.id) return;
+    const ok = window.confirm(`Delete "${title}"? This cannot be undone.`);
+    if (!ok) return;
+
+    try {
+      setDeleting(true);
+      // Back-end handles Cloudinary cleanup (cover, embedded images) on delete.
+      const res = await fetch(`${API}/posts/${post.id}`, { method: "DELETE" });
+      if (!(res.ok || res.status === 204 || res.status === 404)) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+      // notify parent to remove from list
+      onDeleted?.(post.id);
+    } catch (err) {
+      console.error(err);
+      alert("Could not delete the post. Please try again.");
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   return (
     <article
@@ -61,10 +85,8 @@ export default function PostListItem({ post, onDelete }) {
         {/* Meta: Author • Category */}
         <div className="mt-1 text-xs sm:text-sm text-gray-600 flex flex-wrap items-center gap-x-2 gap-y-1">
           <span>By</span>
-          <Link
-            to={`/posts?author=${encodeURIComponent(author)}`}
-            className="font-medium text-indigo-700 hover:underline"
-          >
+          {/* Route to About page when clicking author */}
+          <Link to="/about" className="font-medium text-indigo-700 hover:underline">
             {author}
           </Link>
           <span className="text-gray-300">|</span>
@@ -81,12 +103,13 @@ export default function PostListItem({ post, onDelete }) {
       </div>
 
       {/* Admin-only delete */}
-      {isAdmin && onDelete && (
+      {isAdmin && (
         <button
-          onClick={onDelete}
-          className="ml-2 px-3 py-1.5 text-sm bg-red-600 text-white rounded hover:bg-red-500"
+          onClick={handleDelete}
+          disabled={deleting}
+          className="ml-2 px-3 py-1.5 text-sm bg-red-600 text-white rounded hover:bg-red-500 disabled:opacity-60"
         >
-          Delete
+          {deleting ? "Deleting…" : "Delete"}
         </button>
       )}
     </article>

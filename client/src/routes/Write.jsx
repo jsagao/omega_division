@@ -12,7 +12,7 @@ import LiteYouTubeEmbed from "react-lite-youtube-embed";
 import "react-lite-youtube-embed/dist/LiteYouTubeEmbed.css";
 
 // Cloudinary helpers
-import { uploadToCloudinary } from "../utils/uploadCloudinary";
+// NOTE: we still use withTransform; but for deletion-by-token we do the upload inline here
 import { withTransform } from "../utils/withTransform";
 
 // API + Cloudinary env
@@ -52,7 +52,6 @@ function getYouTubeId(url) {
   if (!url) return null;
   const u = url.trim();
 
-  // 1) common patterns
   const mWatch = u.match(/[?&]v=([A-Za-z0-9_-]{11})/i);
   if (mWatch) return mWatch[1];
 
@@ -65,7 +64,6 @@ function getYouTubeId(url) {
   const mEmbed = u.match(/youtube\.com\/embed\/([A-Za-z0-9_-]{11})(?:[?&].*)?$/i);
   if (mEmbed) return mEmbed[1];
 
-  // 2) last resort: find any 11-char token after youtube domain
   const mAny = u.match(/(?:youtube\.com|youtu\.be)[^A-Za-z0-9_-]([A-Za-z0-9_-]{11})/i);
   return mAny ? mAny[1] : null;
 }
@@ -78,6 +76,41 @@ function getVimeoId(url) {
 
 function isDirectVideo(url) {
   return !!url && /\.(mp4|webm|ogg)(\?.*)?$/i.test(url.trim());
+}
+
+// ---- Cloudinary client-side helpers (unsigned) ----
+async function uploadWithDeleteToken(file) {
+  if (!CLOUD_NAME || !UPLOAD_PRESET) {
+    throw new Error("Missing Cloudinary config. Add VITE_CLOUDINARY_* env vars.");
+  }
+  const url = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/upload`;
+  const fd = new FormData();
+  fd.append("file", file);
+  fd.append("upload_preset", UPLOAD_PRESET);
+  // Ask Cloudinary to return a one-time delete token (requires preset config)
+  fd.append("return_delete_token", "true");
+
+  const res = await fetch(url, { method: "POST", body: fd });
+  if (!res.ok) {
+    const msg = await res.text().catch(() => "");
+    throw new Error(`Upload failed ${res.status}: ${msg}`);
+  }
+  const json = await res.json();
+  // json includes: secure_url, public_id, delete_token (if preset allows it)
+  return json;
+}
+
+async function deleteByToken(token) {
+  if (!token || !CLOUD_NAME) return false;
+  try {
+    const url = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/delete_by_token`;
+    const fd = new FormData();
+    fd.append("token", token);
+    const res = await fetch(url, { method: "POST", body: fd });
+    return res.ok;
+  } catch {
+    return false;
+  }
 }
 
 // ---------- component ----------
@@ -93,8 +126,10 @@ export default function Write() {
   const [featuredSlot, setFeaturedSlot] = useState("none");
   const [featuredRank, setFeaturedRank] = useState("");
 
-  // cover image
+  // cover image (track URL + delete_token + public_id)
   const [coverUrl, setCoverUrl] = useState("");
+  const [coverDeleteToken, setCoverDeleteToken] = useState(""); // can delete immediately if user removes/replaces
+  const [coverPublicId, setCoverPublicId] = useState(""); // send to backend for final deletion on post delete
   const [coverUploading, setCoverUploading] = useState(false);
   const [showCoverPreview, setShowCoverPreview] = useState(false);
 
@@ -120,6 +155,9 @@ export default function Write() {
 
   // Track pending images
   const [pendingImages, setPendingImages] = useState([]);
+
+  // Also collect public_ids of editor images uploaded on publish
+  const editorPublicIdsRef = useRef([]);
 
   // Acquire quill instance safely
   useEffect(() => {
@@ -177,6 +215,22 @@ export default function Write() {
   function pickCover() {
     coverInputRef.current?.click();
   }
+
+  async function removeCover() {
+    try {
+      // Best-effort: delete current cover from Cloudinary via delete_token if we have it
+      if (coverDeleteToken) {
+        await deleteByToken(coverDeleteToken);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setCoverUrl("");
+      setCoverDeleteToken("");
+      setCoverPublicId("");
+    }
+  }
+
   async function onSelectCover(e) {
     try {
       setErrorMsg("");
@@ -190,17 +244,29 @@ export default function Write() {
         setErrorMsg("Missing Cloudinary config. Add VITE_CLOUDINARY_* env vars.");
         return;
       }
+
       setCoverUploading(true);
-      const rawUrl = await uploadToCloudinary(file, {
-        cloudName: CLOUD_NAME,
-        uploadPreset: UPLOAD_PRESET,
-      });
-      const url = withTransform(rawUrl, {
+
+      // If there's an existing cover (uploaded in this session), delete it first
+      if (coverDeleteToken) {
+        try {
+          await deleteByToken(coverDeleteToken);
+        } catch {
+          // ignore
+        }
+      }
+
+      // Upload new one with delete token request
+      const up = await uploadWithDeleteToken(file); // { secure_url, public_id, delete_token, ... }
+      const transformedUrl = withTransform(up.secure_url, {
         width: 1600,
         quality: 85,
         crop: "limit",
       });
-      setCoverUrl(url);
+
+      setCoverUrl(transformedUrl);
+      setCoverDeleteToken(up.delete_token || ""); // might be empty if preset not configured; that's OK
+      setCoverPublicId(up.public_id || "");
     } catch (err) {
       setErrorMsg(err.message || "Cover upload failed.");
     } finally {
@@ -318,46 +384,49 @@ export default function Write() {
 
   // --- On Publish: upload pending blob images and rewrite the HTML ---
   async function resolveEditorImages(html, pending) {
-    if (!html) return html;
+    if (!html) return { html, publicIds: [] };
     let nextHtml = html;
+    const publicIds = [];
 
+    // Replace temp blob URLs we inserted
     for (const { tempUrl, file } of pending) {
       if (!nextHtml.includes(tempUrl)) continue;
-      if (!CLOUD_NAME || !UPLOAD_PRESET) {
-        throw new Error("Missing Cloudinary config. Add VITE_CLOUDINARY_* env vars.");
-      }
-      const uploadedUrl = await uploadToCloudinary(file, {
-        cloudName: CLOUD_NAME,
-        uploadPreset: UPLOAD_PRESET,
-      });
-      const finalUrl = withTransform(uploadedUrl, {
+
+      const up = await uploadWithDeleteToken(file); // get secure_url + public_id
+      const finalUrl = withTransform(up.secure_url, {
         width: EDITOR_IMG_WIDTH,
         quality: EDITOR_IMG_QUALITY,
         crop: EDITOR_IMG_CROP,
       });
+
       nextHtml = nextHtml.split(tempUrl).join(finalUrl);
       URL.revokeObjectURL(tempUrl);
+
+      if (up.public_id) publicIds.push(up.public_id);
+      // We don’t try to delete editor images immediately; send public_ids to backend to clean up on post delete.
     }
 
+    // Convert <img src="data:image/..."> → upload → replace
     const dataUrlRegex = /<img[^>]+src=["'](data:image\/[^"']+)["'][^>]*>/gi;
     const matches = [...nextHtml.matchAll(dataUrlRegex)];
     for (const m of matches) {
       const dataUrl = m[1];
       try {
         const file = dataURLtoFile(dataUrl, "pasted-image.png");
-        const uploadedUrl = await uploadToCloudinary(file, {
-          cloudName: CLOUD_NAME,
-          uploadPreset: UPLOAD_PRESET,
-        });
-        const finalUrl = withTransform(uploadedUrl, {
+        const up = await uploadWithDeleteToken(file);
+        const finalUrl = withTransform(up.secure_url, {
           width: EDITOR_IMG_WIDTH,
           quality: EDITOR_IMG_QUALITY,
           crop: EDITOR_IMG_CROP,
         });
         nextHtml = nextHtml.split(dataUrl).join(finalUrl);
-      } catch {}
+        if (up.public_id) publicIds.push(up.public_id);
+      } catch {
+        // ignore this one
+      }
     }
-    return nextHtml;
+
+    return { html: nextHtml, publicIds };
   }
 
   function dataURLtoFile(dataUrl, filename) {
@@ -416,7 +485,8 @@ export default function Write() {
     try {
       setSubmitting(true);
 
-      const resolvedHtml = await resolveEditorImages(content, pendingImages);
+      const { html: resolvedHtml, publicIds } = await resolveEditorImages(content, pendingImages);
+      editorPublicIdsRef.current = publicIds || [];
 
       const authorName =
         user?.fullName || user?.username || user?.primaryEmailAddress?.emailAddress || "anonymous";
@@ -429,10 +499,12 @@ export default function Write() {
         content: (resolvedHtml || "").trim(),
         description: (excerpt || "").trim(),
         cover_image_url: coverUrl,
+        cover_image_public_id: coverPublicId || null, // 👈 send to backend for later deletion
         author_image_url: user?.imageUrl || "",
         featured_slot: featuredSlot,
         featured_rank: featuredRank ? Number(featuredRank) : null,
         video_urls: videoUrls.map((u) => u.trim()).filter(Boolean),
+        content_image_public_ids: editorPublicIdsRef.current, // 👈 send all editor image public_ids
       };
 
       const res = await fetch(`${API}/posts`, {
@@ -450,6 +522,7 @@ export default function Write() {
       setErrorMsg(err.message || "Something went wrong while publishing.");
     } finally {
       setSubmitting(false);
+      // clear pending blobs to avoid leaks if you stay on page
       pendingImages.forEach(({ tempUrl }) => URL.revokeObjectURL(tempUrl));
       setPendingImages([]);
     }
@@ -457,7 +530,7 @@ export default function Write() {
 
   return (
     <div className="h-[calc(100vh-64px)] md:h-[calc(100vh-80px)] flex flex-col gap-6 m-11">
-      {/* Quill & video preview styles + kill gray box on LiteYouTube */}
+      {/* Quill & video preview styles + LiteYouTube polish */}
       <style>{`
         .ql-editor img{max-width:100%;height:auto;display:block;margin:1rem auto;}
 
@@ -475,9 +548,10 @@ export default function Write() {
           width: 100%;
           height: auto;
           display: block;
+          position: relative;
         }
         .yt-card .yt-lite::before{ content: none !important; }
-        .yt-card .yt-lite > img{ width:100%; height:100%; object-fit: cover; }
+        .yt-card .yt-lite > img{ width:100%; height:100%; object-fit: cover; display:block; }
       `}</style>
 
       <h1 className="text-xl font-light">Create a New Post</h1>
@@ -510,8 +584,10 @@ export default function Write() {
               />
               <button
                 type="button"
-                onClick={() => setCoverUrl("")}
+                onClick={removeCover}
                 className="text-xs px-2 py-1 rounded border hover:bg-gray-50"
+                disabled={coverUploading}
+                title={coverDeleteToken ? "Remove (will delete from Cloudinary)" : "Remove"}
               >
                 Remove
               </button>
@@ -661,7 +737,7 @@ export default function Write() {
                     </div>
                   )}
                   {vmId && (
-                    <div className="player-wrapper bg-black/5">
+                    <div className="player-wrapper">
                       <iframe
                         src={`https://player.vimeo.com/video/${vmId}`}
                         allow="autoplay; fullscreen; picture-in-picture"
@@ -671,7 +747,7 @@ export default function Write() {
                     </div>
                   )}
                   {direct && (
-                    <div className="player-wrapper bg-black/5">
+                    <div className="player-wrapper">
                       <video controls playsInline src={u} />
                     </div>
                   )}
