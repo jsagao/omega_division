@@ -95,7 +95,6 @@ export default function FeaturedPosts() {
     return (
       <div className="mx-auto max-w-[1100px] px-4 py-6 space-y-6">
         {ShimmerCSS}
-
         {/* Hero skeleton */}
         <div className="md:flex md:items-start md:gap-6">
           <div className="md:w-2/3 space-y-3">
@@ -105,7 +104,6 @@ export default function FeaturedPosts() {
               <div className="h-4 w-20 rounded shimmer" />
             </div>
           </div>
-
           <div className="md:w-1/3 space-y-3 mt-4 md:mt-0">
             <div className="h-7 w-11/12 rounded shimmer" />
             <div className="h-7 w-9/12 rounded shimmer" />
@@ -114,7 +112,6 @@ export default function FeaturedPosts() {
             <div className="h-4 w-4/6 rounded shimmer" />
           </div>
         </div>
-
         {/* Minis skeleton */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           {[...Array(5)].map((_, i) => (
@@ -133,7 +130,6 @@ export default function FeaturedPosts() {
   }
 
   if (status === "error" || !main) return null;
-
   const minis = data.minis ?? [];
 
   return (
@@ -152,6 +148,10 @@ export default function FeaturedPosts() {
             <Image
               src={heroSrc}
               alt={main?.title || "Featured image"}
+              onError={(e) => {
+                const key = (main?.category || "general").toLowerCase();
+                e.currentTarget.src = CATEGORY_FALLBACKS[key] || CATEGORY_FALLBACKS.general;
+              }}
               className="w-full object-cover transition-transform duration-300 hover:scale-105 h-52 sm:h-64 md:h-[380px]"
               width={1100}
               height={380}
@@ -165,6 +165,15 @@ export default function FeaturedPosts() {
               onClick={(e) => e.stopPropagation()}
             >
               {main?.category}
+            </Link>
+            {/* Author → About */}
+            <span className="text-gray-400">•</span>
+            <Link
+              to="/about"
+              className="text-blue-800 hover:underline"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {main?.author || "anonymous"}
             </Link>
           </div>
         </div>
@@ -208,14 +217,17 @@ export default function FeaturedPosts() {
                 <Image
                   src={miniSrc}
                   alt={it.title}
+                  onError={(e) => {
+                    const key = (it.category || "general").toLowerCase();
+                    e.currentTarget.src = CATEGORY_FALLBACKS[key] || CATEGORY_FALLBACKS.general;
+                  }}
                   className="w-full h-full object-cover"
                   width={298}
                   height={160}
                 />
               </div>
-
               <div className="p-3">
-                <div className="text-xs text-gray-600">
+                <div className="text-xs text-gray-600 flex gap-2 items-center">
                   <Link
                     to={`/category/${(it.category || "general").toLowerCase()}`}
                     className="text-blue-800 hover:underline"
@@ -223,12 +235,18 @@ export default function FeaturedPosts() {
                   >
                     {it.category}
                   </Link>
+                  <span className="text-gray-400">•</span>
+                  <Link
+                    to="/about"
+                    className="text-blue-800 hover:underline"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {it.author || "anonymous"}
+                  </Link>
                 </div>
-
                 <h3 className="mt-1 font-semibold text-sm text-gray-900 line-clamp-2 hover:underline">
                   {it.title}
                 </h3>
-
                 <p className="mt-2 text-sm text-gray-700 line-clamp-2">{previewFrom(it) || "—"}</p>
               </div>
             </div>
