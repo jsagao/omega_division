@@ -63,7 +63,7 @@ export default function Portfolio() {
         author: {
           name: authorName,
           role: "Contributor",
-          href: "/about",
+          href: "/about", // send author clicks to About page
           imageUrl: "/featured1.jpeg",
         },
       };
@@ -171,8 +171,7 @@ export default function Portfolio() {
 
                   <div className="group relative max-w-xl">
                     <h3 className="mt-3 text-lg/6 font-semibold text-white group-hover:text-gray-300">
-                      <a href={post.href}>
-                        <span className="absolute inset-0" />
+                      <a href={post.href} className="hover:underline">
                         {post.title}
                       </a>
                     </h3>
@@ -183,7 +182,11 @@ export default function Portfolio() {
                       <div className="mt-3">
                         <button
                           type="button"
-                          onClick={() => handleDelete(post.id, post.title)}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation(); // ⛔ prevent clicks from hitting the title link
+                            handleDelete(post.id, post.title);
+                          }}
                           disabled={deletingId === post.id}
                           className="text-sm px-3 py-1.5 rounded border border-red-400/40 text-red-200 hover:bg-red-500/10 disabled:opacity-60"
                         >
@@ -195,17 +198,16 @@ export default function Portfolio() {
 
                   <div className="mt-6 flex border-t border-white/10 pt-6">
                     <div className="relative flex items-center gap-x-4">
-                      <img
-                        alt=""
-                        src={post.author.imageUrl}
-                        className="size-10 rounded-full bg-gray-800"
-                      />
+                      <a href={post.author.href}>
+                        <img
+                          alt=""
+                          src={post.author.imageUrl}
+                          className="size-10 rounded-full bg-gray-800"
+                        />
+                      </a>
                       <div className="text-sm/6">
                         <p className="font-semibold text-white">
-                          <a href={post.author.href}>
-                            <span className="absolute inset-0" />
-                            {post.author.name}
-                          </a>
+                          <a href={post.author.href}>{post.author.name}</a>
                         </p>
                         <p className="text-gray-400">{post.author.role}</p>
                       </div>
