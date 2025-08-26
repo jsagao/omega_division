@@ -1,79 +1,91 @@
 // src/component/SideMenu.jsx
-import { Link, useSearchParams, useLocation, useNavigate } from "react-router-dom";
-import { useMemo, useCallback } from "react";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import Search from "./Search";
+import { useMemo } from "react";
 
-// Keep these in sync with your app-wide categories
+// Keep in sync with MainCategories / FeaturedPosts
 const CATEGORIES = [
-  { label: "All", value: "all" }, // special: shows everything
-  { label: "Programming", value: "programming" },
-  { label: "Data Science", value: "data-science" },
-  { label: "Business", value: "business" },
-  { label: "Technology", value: "technology" },
-  { label: "Development", value: "development" },
-  { label: "Travel", value: "travel" },
+  { name: "All", value: "all" }, // special: routes to /posts
+  { name: "Programming", value: "programming" },
+  { name: "Data Science", value: "data-science" },
+  { name: "Business", value: "business" },
+  { name: "Technology", value: "technology" },
+  { name: "Development", value: "development" },
+  { name: "Travel", value: "travel" },
 ];
 
+// Optional sort values understood by your backend (/posts?sort=…)
 const SORTS = [
   { label: "Newest", value: "newest" },
-  { label: "Most Popular", value: "most-popular" },
+  { label: "Most Popular", value: "popular" },
   { label: "Trending", value: "trending" },
   { label: "Oldest", value: "oldest" },
 ];
 
 export default function SideMenu() {
-  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { pathname } = useLocation();
 
-  const activeSort = (searchParams.get("sort") || "newest").toLowerCase();
-  const activeCat = pathname.startsWith("/category/")
+  // Figure out the active category from pretty route or ?cat=
+  const routeCat = pathname.startsWith("/category/")
     ? pathname.replace(/^\/category\//, "").toLowerCase()
-    : (searchParams.get("cat") || "all").toLowerCase();
+    : null;
+  const queryCat = (searchParams.get("cat") || "").toLowerCase();
+  const activeCat = routeCat || queryCat || "all";
 
-  // Helper to update a single query param while preserving others
-  const updateParam = useCallback(
-    (key, value) => {
-      const next = new URLSearchParams(searchParams);
-      if (value === null || value === undefined || value === "" || value === "all") {
-        next.delete(key);
-      } else {
-        next.set(key, value);
-      }
-      setSearchParams(next, { replace: true });
-    },
-    [searchParams, setSearchParams]
-  );
+  // Current sort (default to newest)
+  const sort = (searchParams.get("sort") || "newest").toLowerCase();
 
-  // When changing sort, stay on the same page/route and only update ?sort=
-  function onChangeSort(e) {
-    updateParam("sort", e.target.value);
-  }
-
-  // Build category hrefs; prefer pretty /category/:slug routes like the rest of the app
-  const categoryLinks = useMemo(() => {
+  // Build category links; preserve other params (q, sort, etc.)
+  const catLinks = useMemo(() => {
     return CATEGORIES.map((c) => {
-      if (c.value === "all") {
-        // go to /posts and drop cat param
-        const next = new URLSearchParams(searchParams);
-        next.delete("cat");
-        return { ...c, href: `/posts${next.toString() ? `?${next.toString()}` : ""}` };
-      }
-      // pretty route, preserve existing params but remove conflicting cat query if present
-      const next = new URLSearchParams(searchParams);
-      next.delete("cat");
-      const qs = next.toString();
-      return { ...c, href: `/category/${c.value}${qs ? `?${qs}` : ""}` };
+      const params = new URLSearchParams(searchParams);
+      params.delete("cat"); // prefer pretty /category route
+      const qs = params.toString();
+      const href =
+        c.value === "all"
+          ? `/posts${qs ? `?${qs}` : ""}`
+          : `/category/${c.value}${qs ? `?${qs}` : ""}`;
+
+      const isActive = activeCat === c.value;
+
+      return (
+        <Link
+          key={c.value}
+          to={href}
+          className={[
+            "px-3 py-1.5 rounded-md text-sm transition",
+            isActive
+              ? "bg-indigo-600 text-white"
+              : "text-indigo-700 underline hover:no-underline hover:bg-indigo-50",
+          ].join(" ")}
+        >
+          {c.name}
+        </Link>
+      );
     });
-  }, [searchParams]);
+  }, [activeCat, searchParams]);
+
+  // Update sort while preserving current category (route) and other params
+  function onChangeSort(e) {
+    const next = e.target.value;
+    const params = new URLSearchParams(searchParams);
+    params.set("sort", next);
+
+    if (activeCat && activeCat !== "all") {
+      params.delete("cat"); // avoid duplicate signals
+      navigate(`/category/${activeCat}?${params.toString()}`);
+    } else {
+      navigate(`/posts?${params.toString()}`);
+    }
+  }
 
   return (
     <aside className="px-4 h-max sticky top-8">
-      {/* Search */}
       <h2 className="mb-4 text-sm font-medium">Search</h2>
       <Search />
 
-      {/* Filter / Sort */}
       <h2 className="mb-4 mt-6 text-sm font-medium">Filter</h2>
       <div className="flex flex-col gap-2 text-sm">
         {SORTS.map((s) => (
@@ -82,8 +94,8 @@ export default function SideMenu() {
               type="radio"
               name="sort"
               value={s.value}
+              checked={sort === s.value}
               onChange={onChangeSort}
-              checked={activeSort === s.value}
               className="appearance-none w-4 h-4 border-[1.5px] border-blue-800 cursor-pointer rounded-sm checked:bg-blue-800"
             />
             {s.label}
@@ -91,22 +103,8 @@ export default function SideMenu() {
         ))}
       </div>
 
-      {/* Categories */}
       <h2 className="mb-4 mt-6 text-sm font-medium">Categories</h2>
-      <nav className="flex flex-col gap-2 text-sm">
-        {categoryLinks.map((c) => {
-          const isActive = (c.value === "all" && activeCat === "all") || activeCat === c.value;
-          return (
-            <Link
-              key={c.value}
-              className={`underline ${isActive ? "text-blue-800 font-medium" : ""}`}
-              to={c.href}
-            >
-              {c.label}
-            </Link>
-          );
-        })}
-      </nav>
+      <nav className="flex flex-col gap-2 text-sm">{catLinks}</nav>
     </aside>
   );
 }
