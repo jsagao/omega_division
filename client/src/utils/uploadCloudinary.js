@@ -1,7 +1,7 @@
 // src/utils/uploadCloudinary.js
 /**
- * Upload a file to Cloudinary (unsigned).
- * Returns { secure_url, public_id, delete_token?, ... }
+ * Unsigned upload to Cloudinary (image/video).
+ * Returns { secure_url, public_id, resource_type, delete_token? ... }
  */
 export async function uploadToCloudinary(
   file,
@@ -21,42 +21,41 @@ export async function uploadToCloudinary(
   if (Array.isArray(tags) && tags.length) fd.append("tags", tags.join(","));
   const ctx = Object.entries(context)
     .filter(([, v]) => v != null && v !== "")
-    .map(([k, v]) => `${k}=${v}`)
-    .join("|");
-  if (ctx) fd.append("context", ctx);
+    .map(([k, v]) => `${k}=${v}`);
+  if (ctx.length) fd.append("context", ctx.join("|"));
 
-  // ⚠️ DO NOT append `return_delete_token` here on unsigned uploads.
-  // If your preset has "Return delete token" enabled, Cloudinary will include `delete_token` in the JSON automatically.
+  // ⚠️ DO NOT append "return_delete_token" here. It must be enabled in the Upload Preset, not the request.
 
   const res = await fetch(endpoint, { method: "POST", body: fd });
   if (!res.ok) {
     const msg = await res.text().catch(() => "");
     throw new Error(`Cloudinary upload failed ${res.status}: ${msg}`);
   }
-
   const json = await res.json();
+
+  // Expose the fields you care about (delete_token may or may not be present)
   const {
     secure_url,
     public_id,
-    delete_token, // present only if your preset returns it
     resource_type,
     width,
     height,
     bytes,
     format,
     duration,
+    delete_token,
   } = json;
 
   return {
     secure_url,
     public_id,
-    delete_token, // <- grab it if present
     resource_type,
     width,
     height,
     bytes,
     format,
     duration,
+    delete_token, // present only if your unsigned preset has “Return delete token” enabled
     _raw: json,
   };
 }

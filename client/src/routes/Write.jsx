@@ -12,7 +12,7 @@ import LiteYouTubeEmbed from "react-lite-youtube-embed";
 import "react-lite-youtube-embed/dist/LiteYouTubeEmbed.css";
 
 // Cloudinary helpers
-// NOTE: we still use withTransform; but for deletion-by-token we do the upload inline here
+import { uploadToCloudinary } from "../utils/uploadCloudinary";
 import { withTransform } from "../utils/withTransform";
 
 // API + Cloudinary env
@@ -78,41 +78,6 @@ function isDirectVideo(url) {
   return !!url && /\.(mp4|webm|ogg)(\?.*)?$/i.test(url.trim());
 }
 
-// ---- Cloudinary client-side helpers (unsigned) ----
-async function uploadWithDeleteToken(file) {
-  if (!CLOUD_NAME || !UPLOAD_PRESET) {
-    throw new Error("Missing Cloudinary config. Add VITE_CLOUDINARY_* env vars.");
-  }
-  const url = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/upload`;
-  const fd = new FormData();
-  fd.append("file", file);
-  fd.append("upload_preset", UPLOAD_PRESET);
-  // Ask Cloudinary to return a one-time delete token (requires preset config)
-  fd.append("return_delete_token", "true");
-
-  const res = await fetch(url, { method: "POST", body: fd });
-  if (!res.ok) {
-    const msg = await res.text().catch(() => "");
-    throw new Error(`Upload failed ${res.status}: ${msg}`);
-  }
-  const json = await res.json();
-  // json includes: secure_url, public_id, delete_token (if preset allows it)
-  return json;
-}
-
-async function deleteByToken(token) {
-  if (!token || !CLOUD_NAME) return false;
-  try {
-    const url = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/delete_by_token`;
-    const fd = new FormData();
-    fd.append("token", token);
-    const res = await fetch(url, { method: "POST", body: fd });
-    return res.ok;
-  } catch {
-    return false;
-  }
-}
-
 // ---------- component ----------
 export default function Write() {
   const { isLoaded, isSignedIn, user } = useUser();
@@ -126,10 +91,9 @@ export default function Write() {
   const [featuredSlot, setFeaturedSlot] = useState("none");
   const [featuredRank, setFeaturedRank] = useState("");
 
-  // cover image (track URL + delete_token + public_id)
+  // cover image (track URL + public_id for server-side deletion later)
   const [coverUrl, setCoverUrl] = useState("");
-  const [coverDeleteToken, setCoverDeleteToken] = useState(""); // can delete immediately if user removes/replaces
-  const [coverPublicId, setCoverPublicId] = useState(""); // send to backend for final deletion on post delete
+  const [coverPublicId, setCoverPublicId] = useState("");
   const [coverUploading, setCoverUploading] = useState(false);
   const [showCoverPreview, setShowCoverPreview] = useState(false);
 
@@ -155,7 +119,6 @@ export default function Write() {
 
   // Track pending images
   const [pendingImages, setPendingImages] = useState([]);
-
   // Also collect public_ids of editor images uploaded on publish
   const editorPublicIdsRef = useRef([]);
 
@@ -217,18 +180,9 @@ export default function Write() {
   }
 
   async function removeCover() {
-    try {
-      // Best-effort: delete current cover from Cloudinary via delete_token if we have it
-      if (coverDeleteToken) {
-        await deleteByToken(coverDeleteToken);
-      }
-    } catch {
-      // ignore
-    } finally {
-      setCoverUrl("");
-      setCoverDeleteToken("");
-      setCoverPublicId("");
-    }
+    // Just clear the preview; the real deletion is handled on post delete server-side via public_id
+    setCoverUrl("");
+    setCoverPublicId("");
   }
 
   async function onSelectCover(e) {
@@ -247,17 +201,14 @@ export default function Write() {
 
       setCoverUploading(true);
 
-      // If there's an existing cover (uploaded in this session), delete it first
-      if (coverDeleteToken) {
-        try {
-          await deleteByToken(coverDeleteToken);
-        } catch {
-          // ignore
-        }
-      }
+      // Upload new one (unsigned upload). Do NOT append return_delete_token here.
+      const up = await uploadToCloudinary(file, {
+        cloudName: CLOUD_NAME,
+        uploadPreset: UPLOAD_PRESET,
+        folder: "blog",
+        context: { via: "write-cover" },
+      }); // returns { secure_url, public_id, ... }
 
-      // Upload new one with delete token request
-      const up = await uploadWithDeleteToken(file); // { secure_url, public_id, delete_token, ... }
       const transformedUrl = withTransform(up.secure_url, {
         width: 1600,
         quality: 85,
@@ -265,8 +216,8 @@ export default function Write() {
       });
 
       setCoverUrl(transformedUrl);
-      setCoverDeleteToken(up.delete_token || ""); // might be empty if preset not configured; that's OK
       setCoverPublicId(up.public_id || "");
+      setShowCoverPreview(true);
     } catch (err) {
       setErrorMsg(err.message || "Cover upload failed.");
     } finally {
@@ -388,11 +339,16 @@ export default function Write() {
     let nextHtml = html;
     const publicIds = [];
 
-    // Replace temp blob URLs we inserted
     for (const { tempUrl, file } of pending) {
       if (!nextHtml.includes(tempUrl)) continue;
 
-      const up = await uploadWithDeleteToken(file); // get secure_url + public_id
+      const up = await uploadToCloudinary(file, {
+        cloudName: CLOUD_NAME,
+        uploadPreset: UPLOAD_PRESET,
+        folder: "blog/content",
+        context: { via: "write-editor" },
+      }); // { secure_url, public_id, ... }
+
       const finalUrl = withTransform(up.secure_url, {
         width: EDITOR_IMG_WIDTH,
         quality: EDITOR_IMG_QUALITY,
@@ -403,7 +359,6 @@ export default function Write() {
       URL.revokeObjectURL(tempUrl);
 
       if (up.public_id) publicIds.push(up.public_id);
-      // We don’t try to delete editor images immediately; send public_ids to backend to clean up on post delete.
     }
 
     // Convert <img src="data:image/..."> → upload → replace
@@ -413,7 +368,12 @@ export default function Write() {
       const dataUrl = m[1];
       try {
         const file = dataURLtoFile(dataUrl, "pasted-image.png");
-        const up = await uploadWithDeleteToken(file);
+        const up = await uploadToCloudinary(file, {
+          cloudName: CLOUD_NAME,
+          uploadPreset: UPLOAD_PRESET,
+          folder: "blog/content",
+          context: { via: "write-editor-dataurl" },
+        });
         const finalUrl = withTransform(up.secure_url, {
           width: EDITOR_IMG_WIDTH,
           quality: EDITOR_IMG_QUALITY,
@@ -499,12 +459,12 @@ export default function Write() {
         content: (resolvedHtml || "").trim(),
         description: (excerpt || "").trim(),
         cover_image_url: coverUrl,
-        cover_image_public_id: coverPublicId || null, // 👈 send to backend for later deletion
+        cover_image_public_id: coverPublicId || null, // server will use this to destroy on delete
         author_image_url: user?.imageUrl || "",
         featured_slot: featuredSlot,
         featured_rank: featuredRank ? Number(featuredRank) : null,
         video_urls: videoUrls.map((u) => u.trim()).filter(Boolean),
-        content_image_public_ids: editorPublicIdsRef.current, // 👈 send all editor image public_ids
+        content_image_public_ids: editorPublicIdsRef.current, // same for embedded images
       };
 
       const res = await fetch(`${API}/posts`, {
@@ -587,7 +547,7 @@ export default function Write() {
                 onClick={removeCover}
                 className="text-xs px-2 py-1 rounded border hover:bg-gray-50"
                 disabled={coverUploading}
-                title={coverDeleteToken ? "Remove (will delete from Cloudinary)" : "Remove"}
+                title="Remove cover (image will be destroyed if the post is deleted)"
               >
                 Remove
               </button>
