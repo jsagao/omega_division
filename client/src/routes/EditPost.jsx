@@ -230,27 +230,43 @@ export default function EditPost() {
 
     try {
       setSaving(true);
-      const payload = {
+
+      // Build raw payload
+      const raw = {
         title: title.trim(),
         category,
         excerpt: excerpt.trim(),
         content: (content || "").trim(),
         description: (excerpt || "").trim(), // legacy sync
         featured_slot: featuredSlot,
-        featured_rank: featuredRank ? Number(featuredRank) : null,
-        cover_image_url: coverUrl,
-        author_image_url: authorUrl, // 👈 include avatar on save
+        featured_rank: featuredRank === "" ? undefined : Number(featuredRank), // avoid null
+        cover_image_url: coverUrl || undefined, // avoid empty string
+        author_image_url: authorUrl || undefined, // avoid empty string
       };
+
+      // Strip out undefined / null / "" so we only PATCH fields we really want to change
+      const payload = Object.fromEntries(
+        Object.entries(raw).filter(([_, v]) => !(v === undefined || v === null || v === ""))
+      );
 
       const res = await fetch(`${API}/posts/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
+
       if (!res.ok) {
-        const txt = await res.text().catch(() => "");
-        throw new Error(`Failed to save (HTTP ${res.status}) ${txt}`);
+        // Try to extract FastAPI validation detail for 422s
+        let detail = "";
+        try {
+          const data = await res.json();
+          detail = data?.detail ? JSON.stringify(data.detail) : "";
+        } catch {
+          detail = await res.text().catch(() => "");
+        }
+        throw new Error(`Failed to save (HTTP ${res.status}) ${detail}`);
       }
+
       const updated = await res.json();
       navigate(`/posts/${updated.id}`);
     } catch (err) {
