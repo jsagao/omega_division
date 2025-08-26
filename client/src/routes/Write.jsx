@@ -429,6 +429,14 @@ export default function Write() {
     );
   }
 
+  function normalizeCover(x) {
+    if (typeof x === "string") return x;
+    if (x && typeof x === "object" && x.secure_url) {
+      return withTransform(x.secure_url, { width: 1600, quality: 85, crop: "limit" });
+    }
+    return "";
+  }
+
   async function handlePublish(e) {
     e.preventDefault();
     setErrorMsg("");
@@ -458,13 +466,13 @@ export default function Write() {
         excerpt: excerpt.trim(),
         content: (resolvedHtml || "").trim(),
         description: (excerpt || "").trim(),
-        cover_image_url: coverUrl,
-        cover_image_public_id: coverPublicId || null, // server will use this to destroy on delete
+        cover_image_url: normalizeCover(coverUrl), // ✅ string only
+        cover_image_public_id: coverPublicId || null,
         author_image_url: user?.imageUrl || "",
         featured_slot: featuredSlot,
         featured_rank: featuredRank ? Number(featuredRank) : null,
         video_urls: videoUrls.map((u) => u.trim()).filter(Boolean),
-        content_image_public_ids: editorPublicIdsRef.current, // same for embedded images
+        content_image_public_ids: editorPublicIdsRef.current,
       };
 
       const res = await fetch(`${API}/posts`, {

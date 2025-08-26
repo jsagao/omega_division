@@ -155,12 +155,22 @@ export default function EditPost() {
         return;
       }
       setCoverUploading(true);
-      const raw = await uploadToCloudinary(file, {
+
+      // RETURNS AN OBJECT
+      const up = await uploadToCloudinary(file, {
         cloudName: CLOUD_NAME,
         uploadPreset: UPLOAD_PRESET,
+        folder: "blog",
+        context: { via: "edit-cover" },
       });
-      const url = withTransform(raw, { width: 1600, quality: 85, crop: "limit" });
+
+      // ✅ keep URL as string in state
+      const url = withTransform(up.secure_url, { width: 1600, quality: 85, crop: "limit" });
       setCoverUrl(url);
+
+      // (optional) keep id separately if you later want to destroy from server
+      // setCoverPublicId?.(up.public_id); // only if you added this state
+
       setShowCoverPreview(true);
     } catch (err) {
       setErrorMsg(err.message || "Cover upload failed.");
@@ -214,7 +224,13 @@ export default function EditPost() {
   function removeAuthor() {
     setAuthorUrl("");
   }
-
+  function normalizeCover(x) {
+    if (typeof x === "string") return x;
+    if (x && typeof x === "object" && x.secure_url) {
+      return withTransform(x.secure_url, { width: 1600, quality: 85, crop: "limit" });
+    }
+    return "";
+  }
   async function handleSave(e) {
     e.preventDefault();
     setErrorMsg("");
@@ -230,43 +246,28 @@ export default function EditPost() {
 
     try {
       setSaving(true);
-
-      // Build raw payload
-      const raw = {
+      const payload = {
         title: title.trim(),
         category,
         excerpt: excerpt.trim(),
         content: (content || "").trim(),
-        description: (excerpt || "").trim(), // legacy sync
+        description: (excerpt || "").trim(),
         featured_slot: featuredSlot,
-        featured_rank: featuredRank === "" ? undefined : Number(featuredRank), // avoid null
-        cover_image_url: coverUrl || undefined, // avoid empty string
-        author_image_url: authorUrl || undefined, // avoid empty string
+        featured_rank: featuredRank ? Number(featuredRank) : null,
+        // ✅ ALWAYS a string:
+        cover_image_url: normalizeCover(coverUrl),
+        author_image_url: authorUrl || "",
       };
-
-      // Strip out undefined / null / "" so we only PATCH fields we really want to change
-      const payload = Object.fromEntries(
-        Object.entries(raw).filter(([_, v]) => !(v === undefined || v === null || v === ""))
-      );
 
       const res = await fetch(`${API}/posts/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-
       if (!res.ok) {
-        // Try to extract FastAPI validation detail for 422s
-        let detail = "";
-        try {
-          const data = await res.json();
-          detail = data?.detail ? JSON.stringify(data.detail) : "";
-        } catch {
-          detail = await res.text().catch(() => "");
-        }
-        throw new Error(`Failed to save (HTTP ${res.status}) ${detail}`);
+        const txt = await res.text().catch(() => "");
+        throw new Error(`Failed to save (HTTP ${res.status}) ${txt}`);
       }
-
       const updated = await res.json();
       navigate(`/posts/${updated.id}`);
     } catch (err) {
