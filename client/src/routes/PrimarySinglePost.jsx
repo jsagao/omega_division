@@ -64,21 +64,63 @@ function isDirectVideo(url) {
   return /\.(mp4|webm|ogg)(\?.*)?$/i.test(url || "");
 }
 
-/* Small series nav inline component */
+/* Small series nav inline component (drop-in) */
 function SeriesNav({ series, currentId }) {
-  if (!series || !Array.isArray(series.items) || series.items.length < 2) return null;
+  if (!series) return null;
 
-  // Ensure sorted by part if available, then by created_at fallback
-  const items = [...series.items].sort((a, b) => {
-    const ap = a.series_part ?? 999999;
-    const bp = b.series_part ?? 999999;
+  // Normalize items: backend may return { items: [...] } or { all: [...] }
+  const rawItems = Array.isArray(series.items)
+    ? series.items
+    : Array.isArray(series.all)
+      ? series.all
+      : [];
+
+  const items = rawItems.map((it) => ({
+    id: Number(it.id),
+    title: it.title || "Untitled",
+    part:
+      typeof it.series_part === "number"
+        ? it.series_part
+        : typeof it.part === "number"
+          ? it.part
+          : null,
+    created_at: it.created_at || "", // may be missing; used only for tiebreaker
+  }));
+
+  if (items.length < 2) return null;
+
+  // Sort by part if present, then by created_at
+  items.sort((a, b) => {
+    const ap = a.part ?? 999999;
+    const bp = b.part ?? 999999;
     if (ap !== bp) return ap - bp;
     return (a.created_at || "").localeCompare(b.created_at || "");
-    // backend already sorted, this is belt+suspenders
   });
 
-  const prev = series.prev;
-  const next = series.next;
+  // Normalize prev/next
+  const prev = series.prev
+    ? {
+        id: Number(series.prev.id),
+        part:
+          typeof series.prev.series_part === "number"
+            ? series.prev.series_part
+            : typeof series.prev.part === "number"
+              ? series.prev.part
+              : null,
+      }
+    : null;
+
+  const next = series.next
+    ? {
+        id: Number(series.next.id),
+        part:
+          typeof series.next.series_part === "number"
+            ? series.next.series_part
+            : typeof series.next.part === "number"
+              ? series.next.part
+              : null,
+      }
+    : null;
 
   return (
     <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
@@ -90,11 +132,11 @@ function SeriesNav({ series, currentId }) {
         </p>
       )}
 
+      {/* Chip list of all parts */}
       <div className="mt-3 flex flex-wrap gap-2">
-        {items.map((it, idx) => {
+        {items.map((it) => {
           const isCurrent = it.id === Number(currentId);
-          const label =
-            typeof it.series_part === "number" ? `Part ${it.series_part}: ${it.title}` : it.title;
+          const label = typeof it.part === "number" ? `Part ${it.part}: ${it.title}` : it.title;
           return (
             <Link
               key={it.id}
@@ -112,29 +154,43 @@ function SeriesNav({ series, currentId }) {
         })}
       </div>
 
+      {/* Prev / Next */}
       <div className="mt-3 flex items-center gap-2">
         {prev ? (
           <Link
             to={`/posts/${prev.id}`}
             className="text-sm rounded-lg border px-3 py-1.5 hover:bg-gray-50"
+            title="Previous in series"
           >
-            ← Prev{typeof prev.series_part === "number" ? ` (Part ${prev.series_part})` : ""}
+            {/* simple inline arrow, no extra deps */}
+            <span aria-hidden>←</span> Prev
+            {typeof prev.part === "number" ? ` (Part ${prev.part})` : ""}
           </Link>
         ) : (
-          <button disabled className="text-sm rounded-lg border px-3 py-1.5 opacity-50">
-            ← Prev
+          <button
+            disabled
+            className="text-sm rounded-lg border px-3 py-1.5 opacity-50"
+            title="No previous"
+          >
+            <span aria-hidden>←</span> Prev
           </button>
         )}
         {next ? (
           <Link
             to={`/posts/${next.id}`}
             className="text-sm rounded-lg border px-3 py-1.5 hover:bg-gray-50"
+            title="Next in series"
           >
-            Next{typeof next.series_part === "number" ? ` (Part ${next.series_part})` : ""} →
+            Next{typeof next.part === "number" ? ` (Part ${next.part})` : ""}{" "}
+            <span aria-hidden>→</span>
           </Link>
         ) : (
-          <button disabled className="text-sm rounded-lg border px-3 py-1.5 opacity-50">
-            Next →
+          <button
+            disabled
+            className="text-sm rounded-lg border px-3 py-1.5 opacity-50"
+            title="No next"
+          >
+            Next <span aria-hidden>→</span>
           </button>
         )}
       </div>
