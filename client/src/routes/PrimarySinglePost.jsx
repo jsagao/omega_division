@@ -239,6 +239,7 @@ export default function PrimarySinglePost() {
   }, [id]);
 
   // Fetch series once the post is known and has a series_key
+  // Fetch series once the post is known and has a series_key
   useEffect(() => {
     if (!post || !post.series_key) {
       setSeries(null);
@@ -251,12 +252,18 @@ export default function PrimarySinglePost() {
         setSeriesStatus("loading");
         const res = await fetch(`${API}/posts/${id}/series`, { signal: ctrl.signal });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json(); // { items, prev, next, series_key }
-        if (!data || !Array.isArray(data.items) || data.items.length === 0) {
+        const data = await res.json(); // backend returns { series_key, all: [...], prev, next }
+
+        const hasAny =
+          (Array.isArray(data.items) && data.items.length > 0) ||
+          (Array.isArray(data.all) && data.all.length > 0);
+
+        if (!hasAny) {
           setSeries(null);
           setSeriesStatus("empty");
           return;
         }
+
         setSeries(data);
         setSeriesStatus("ok");
       } catch (e) {
@@ -467,7 +474,7 @@ export default function PrimarySinglePost() {
       </div>
 
       {/* Series Nav (if any) */}
-      {seriesStatus === "ok" && <SeriesNav series={series} currentId={id} />}
+      {series && <SeriesNav series={series} currentId={id} />}
 
       {/* Body + videos + sidebar */}
       <div className="flex flex-col md:flex-row gap-8">
