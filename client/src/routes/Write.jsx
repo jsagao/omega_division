@@ -40,6 +40,10 @@ const TITLE_MAX = 100;
 const EXCERPT_MAX = 250;
 const CONTENT_MAX = 5000;
 
+// Series
+const [seriesKey, setSeriesKey] = useState("");
+const [seriesPart, setSeriesPart] = useState("");
+
 // ---------- helpers ----------
 function stripHtml(html) {
   const div = document.createElement("div");
@@ -450,6 +454,12 @@ export default function Write() {
       return;
     }
 
+    // ✅ Series validation
+    if (!seriesKey.trim() && seriesPart) {
+      setErrorMsg("If you set a Part #, please provide a Series key.");
+      return;
+    }
+
     try {
       setSubmitting(true);
 
@@ -473,6 +483,10 @@ export default function Write() {
         featured_rank: featuredRank ? Number(featuredRank) : null,
         video_urls: videoUrls.map((u) => u.trim()).filter(Boolean),
         content_image_public_ids: editorPublicIdsRef.current,
+
+        // NEW
+        series_key: seriesKey.trim() || null,
+        series_part: seriesPart ? Number(seriesPart) : null,
       };
 
       const res = await fetch(`${API}/posts`, {
@@ -730,6 +744,32 @@ export default function Write() {
           >
             + Add another video
           </button>
+        </div>
+
+        {/* Series (optional) */}
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="flex flex-col">
+            <label className="text-gray-500 text-sm font-medium">Series key</label>
+            <input
+              type="text"
+              value={seriesKey}
+              onChange={(e) => setSeriesKey(e.target.value)}
+              placeholder='e.g. "My Journey"'
+              className="p-2 rounded-xl bg-white shadow-md w-64"
+            />
+          </div>
+          <div className="flex flex-col">
+            <label className="text-gray-500 text-sm font-medium">Part #</label>
+            <input
+              type="number"
+              min="1"
+              value={seriesPart}
+              onChange={(e) => setSeriesPart(e.target.value)}
+              placeholder="1"
+              className="p-2 rounded-xl bg-white shadow-md w-28"
+            />
+          </div>
+          <p className="text-xs text-gray-500">Leave empty if this post is not part of a series.</p>
         </div>
 
         {/* Featured controls */}

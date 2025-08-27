@@ -66,6 +66,10 @@ export default function EditPost() {
   const [featuredSlot, setFeaturedSlot] = useState("none");
   const [featuredRank, setFeaturedRank] = useState("");
 
+  // Series
+  const [seriesKey, setSeriesKey] = useState("");
+  const [seriesPart, setSeriesPart] = useState("");
+
   // cover image (preview + lightbox)
   const [coverUrl, setCoverUrl] = useState("");
   const [coverUploading, setCoverUploading] = useState(false);
@@ -96,6 +100,8 @@ export default function EditPost() {
         setFeaturedRank(typeof data.featured_rank === "number" ? String(data.featured_rank) : "");
         setCoverUrl(data.cover_image_url || "");
         setAuthorUrl(data.author_image_url || ""); // 👈 prefill author avatar
+        setSeriesKey(data.series_key || "");
+        setSeriesPart(typeof data.series_part === "number" ? String(data.series_part) : "");
 
         setStatus("ok");
       } catch (e) {
@@ -243,6 +249,10 @@ export default function EditPost() {
       setErrorMsg("Please shorten fields that exceed their limits before saving.");
       return;
     }
+    if (!seriesKey.trim() && seriesPart) {
+      setErrorMsg("If you set a Part #, please provide a Series key.");
+      return;
+    }
 
     try {
       setSaving(true);
@@ -257,6 +267,8 @@ export default function EditPost() {
         // ✅ ALWAYS a string:
         cover_image_url: normalizeCover(coverUrl),
         author_image_url: authorUrl || "",
+        series_key: seriesKey.trim() || null,
+        series_part: seriesPart ? Number(seriesPart) : null,
       };
 
       const res = await fetch(`${API}/posts/${id}`, {
@@ -411,6 +423,34 @@ export default function EditPost() {
                 </option>
               ))}
             </select>
+          </div>
+
+          {/* Series (optional) */}
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="flex flex-col">
+              <label className="text-gray-600 text-sm font-medium">Series key</label>
+              <input
+                type="text"
+                value={seriesKey}
+                onChange={(e) => setSeriesKey(e.target.value)}
+                placeholder='e.g. "My Journey"'
+                className="p-2 rounded-xl bg-white shadow-md w-64"
+              />
+            </div>
+            <div className="flex flex-col">
+              <label className="text-gray-600 text-sm font-medium">Part #</label>
+              <input
+                type="number"
+                min="1"
+                value={seriesPart}
+                onChange={(e) => setSeriesPart(e.target.value)}
+                placeholder="1"
+                className="p-2 rounded-xl bg-white shadow-md w-28"
+              />
+            </div>
+            <p className="text-xs text-gray-500">
+              Leave empty if this post is not part of a series.
+            </p>
           </div>
 
           <div className="flex flex-col gap-2">

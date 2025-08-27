@@ -15,12 +15,15 @@ import "react-quill-new/dist/quill.snow.css";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
+/** Use your real categories for fallbacks */
 const CATEGORY_IMAGES = {
-  "web-design": "/featured1.jpeg",
+  programming: "/featured1.jpeg",
+  "data-science": "/featured3.jpeg",
+  business: "/featured5.jpeg",
+  technology: "/featured6.jpeg",
   development: "/featured2.jpeg",
-  databases: "/featured3.jpeg",
-  "search-engines": "/featured4.jpeg",
-  marketing: "/featured5.jpeg",
+  travel: "/featured4.jpeg",
+  general: "/featured2.jpeg",
 };
 
 /* ---------------- Helpers ---------------- */
@@ -42,6 +45,10 @@ function getYouTubeId(url) {
   m = s.match(/youtu\.be\/([\w-]{11})/i);
   if (m) return m[1];
 
+  // embed/VIDEOID
+  m = s.match(/youtube\.com\/embed\/([\w-]{11})/i);
+  if (m) return m[1];
+
   return null;
 }
 
@@ -55,6 +62,84 @@ function getVimeoId(url) {
 // Direct MP4 or WebM?
 function isDirectVideo(url) {
   return /\.(mp4|webm|ogg)(\?.*)?$/i.test(url || "");
+}
+
+/* Small series nav inline component */
+function SeriesNav({ series, currentId }) {
+  if (!series || !Array.isArray(series.items) || series.items.length < 2) return null;
+
+  // Ensure sorted by part if available, then by created_at fallback
+  const items = [...series.items].sort((a, b) => {
+    const ap = a.series_part ?? 999999;
+    const bp = b.series_part ?? 999999;
+    if (ap !== bp) return ap - bp;
+    return (a.created_at || "").localeCompare(b.created_at || "");
+    // backend already sorted, this is belt+suspenders
+  });
+
+  const prev = series.prev;
+  const next = series.next;
+
+  return (
+    <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+      <h3 className="text-base font-semibold text-gray-800">This post is part of a series</h3>
+
+      {series.series_key && (
+        <p className="mt-1 text-sm text-gray-600">
+          <span className="font-medium">Series:</span> {series.series_key}
+        </p>
+      )}
+
+      <div className="mt-3 flex flex-wrap gap-2">
+        {items.map((it, idx) => {
+          const isCurrent = it.id === Number(currentId);
+          const label =
+            typeof it.series_part === "number" ? `Part ${it.series_part}: ${it.title}` : it.title;
+          return (
+            <Link
+              key={it.id}
+              to={`/posts/${it.id}`}
+              className={[
+                "text-xs sm:text-sm px-3 py-1.5 rounded-full border transition",
+                isCurrent
+                  ? "bg-indigo-600 text-white border-indigo-600"
+                  : "bg-white text-gray-700 border-gray-200 hover:bg-indigo-50",
+              ].join(" ")}
+            >
+              {label}
+            </Link>
+          );
+        })}
+      </div>
+
+      <div className="mt-3 flex items-center gap-2">
+        {prev ? (
+          <Link
+            to={`/posts/${prev.id}`}
+            className="text-sm rounded-lg border px-3 py-1.5 hover:bg-gray-50"
+          >
+            ← Prev{typeof prev.series_part === "number" ? ` (Part ${prev.series_part})` : ""}
+          </Link>
+        ) : (
+          <button disabled className="text-sm rounded-lg border px-3 py-1.5 opacity-50">
+            ← Prev
+          </button>
+        )}
+        {next ? (
+          <Link
+            to={`/posts/${next.id}`}
+            className="text-sm rounded-lg border px-3 py-1.5 hover:bg-gray-50"
+          >
+            Next{typeof next.series_part === "number" ? ` (Part ${next.series_part})` : ""} →
+          </Link>
+        ) : (
+          <button disabled className="text-sm rounded-lg border px-3 py-1.5 opacity-50">
+            Next →
+          </button>
+        )}
+      </div>
+    </section>
+  );
 }
 
 /* -------------- Component -------------- */
@@ -75,6 +160,10 @@ export default function PrimarySinglePost() {
   const [appending, setAppending] = useState(false);
   const quillRef = useRef(null);
 
+  // Series state
+  const [series, setSeries] = useState(null);
+  const [seriesStatus, setSeriesStatus] = useState("idle"); // idle|loading|ok|empty|error
+
   useEffect(() => {
     const ctrl = new AbortController();
     (async () => {
@@ -93,6 +182,37 @@ export default function PrimarySinglePost() {
     return () => ctrl.abort();
   }, [id]);
 
+  // Fetch series once the post is known and has a series_key
+  useEffect(() => {
+    if (!post || !post.series_key) {
+      setSeries(null);
+      setSeriesStatus("empty");
+      return;
+    }
+    const ctrl = new AbortController();
+    (async () => {
+      try {
+        setSeriesStatus("loading");
+        const res = await fetch(`${API}/posts/${id}/series`, { signal: ctrl.signal });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json(); // { items, prev, next, series_key }
+        if (!data || !Array.isArray(data.items) || data.items.length === 0) {
+          setSeries(null);
+          setSeriesStatus("empty");
+          return;
+        }
+        setSeries(data);
+        setSeriesStatus("ok");
+      } catch (e) {
+        if (e.name !== "AbortError") {
+          setSeries(null);
+          setSeriesStatus("error");
+        }
+      }
+    })();
+    return () => ctrl.abort();
+  }, [post, id]);
+
   // Hero: cover → author avatar → category fallback
   const heroSrc = useMemo(() => {
     if (!post) return "/featured2.jpeg";
@@ -100,8 +220,8 @@ export default function PrimarySinglePost() {
     if (cover) return cover;
     const authorImg = (post.author_image_url || "").trim();
     if (authorImg) return authorImg;
-    const key = (post.category || "").toLowerCase();
-    return CATEGORY_IMAGES[key] || "/featured2.jpeg";
+    const key = (post.category || "general").toLowerCase();
+    return CATEGORY_IMAGES[key] || CATEGORY_IMAGES.general;
   }, [post]);
 
   async function handleDelete() {
@@ -223,17 +343,26 @@ export default function PrimarySinglePost() {
         .post-update h3 { font-weight: 600; margin-top: 0; margin-bottom: 0.5rem; }
         .post-update__time { font-weight: 400; color: #6b7280; font-size: 0.9em; }
 
-  /* video layout */
-.video-grid { display: grid; gap: 1rem; }
-@media (min-width: 768px) { .video-grid { grid-template-columns: 1fr 1fr; } }
+        /* video layout */
+        .video-grid { display: grid; gap: 1rem; }
+        @media (min-width: 768px) { .video-grid { grid-template-columns: 1fr 1fr; } }
 
-/* For iframe (Vimeo) and native <video/> */
-.player-wrapper { position: relative; padding-top: 56.25%; border-radius: 0.75rem; overflow: hidden; }
-.player-wrapper .react-player { position: absolute; top: 0; left: 0; }
+        /* For iframe (Vimeo) and native <video/> */
+        .player-wrapper { position: relative; padding-top: 56.25%; border-radius: 0.75rem; overflow: hidden; }
+        .player-wrapper .react-player { position: absolute; top: 0; left: 0; }
 
-/* For LiteYouTubeEmbed (NO padding!) */
-.yt-card { border-radius: 0.75rem; overflow: hidden; }
-.yt-card .yt-lite { border-radius: 0.75rem; }
+        /* For LiteYouTubeEmbed (no padding wrapper; it has its own) */
+        .yt-card { border-radius: 0.75rem; overflow: hidden; }
+        .yt-card .yt-lite{
+          background: transparent !important;
+          aspect-ratio: 16/9;
+          width: 100%;
+          height: auto;
+          display: block;
+          position: relative;
+        }
+        .yt-card .yt-lite::before{ content: none !important; }
+        .yt-card .yt-lite > img{ width:100%; height:100%; object-fit: cover; display:block; }
       `}</style>
 
       {/* Header + hero */}
@@ -255,6 +384,15 @@ export default function PrimarySinglePost() {
             >
               {post.category || "general"}
             </Link>
+            {typeof post.series_part === "number" && post.series_key && (
+              <>
+                <span className="text-gray-300">|</span>
+                <span className="text-gray-600">
+                  Series: <span className="font-medium">{post.series_key}</span> (Part{" "}
+                  {post.series_part})
+                </span>
+              </>
+            )}
           </div>
 
           <p className="text-gray-600 leading-relaxed">{post.excerpt || ""}</p>
@@ -271,6 +409,9 @@ export default function PrimarySinglePost() {
           />
         </div>
       </div>
+
+      {/* Series Nav (if any) */}
+      {seriesStatus === "ok" && <SeriesNav series={series} currentId={id} />}
 
       {/* Body + videos + sidebar */}
       <div className="flex flex-col md:flex-row gap-8">
@@ -439,25 +580,26 @@ export default function PrimarySinglePost() {
 
             <h2 className="mt-8 mb-4 text-sm font-medium">Categories</h2>
             <nav className="flex flex-col gap-2 text-sm">
+              {/* Use exact category values you use elsewhere */}
               <Link className="underline" to="/posts">
                 All
               </Link>
-              <Link className="underline" to="/posts?cat=programming">
+              <Link className="underline" to="/posts?cat=Programming">
                 Programming
               </Link>
-              <Link className="underline" to="/posts?cat=development">
+              <Link className="underline" to="/posts?cat=Development">
                 Development
               </Link>
-              <Link className="underline" to="/posts?cat=data-science">
+              <Link className="underline" to="/posts?cat=Data-science">
                 Data Science
               </Link>
-              <Link className="underline" to="/posts?cat=business">
+              <Link className="underline" to="/posts?cat=Business">
                 Business
               </Link>
-              <Link className="underline" to="/posts?cat=technology">
+              <Link className="underline" to="/posts?cat=Technology">
                 Technology
               </Link>
-              <Link className="underline" to="/posts?cat=travel">
+              <Link className="underline" to="/posts?cat=Travel">
                 Travel
               </Link>
             </nav>
