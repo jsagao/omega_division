@@ -40,10 +40,6 @@ const TITLE_MAX = 100;
 const EXCERPT_MAX = 250;
 const CONTENT_MAX = 5000;
 
-// Series
-const [seriesKey, setSeriesKey] = useState("");
-const [seriesPart, setSeriesPart] = useState("");
-
 // ---------- helpers ----------
 function stripHtml(html) {
   const div = document.createElement("div");
@@ -94,6 +90,10 @@ export default function Write() {
   const [content, setContent] = useState("");
   const [featuredSlot, setFeaturedSlot] = useState("none");
   const [featuredRank, setFeaturedRank] = useState("");
+
+  // Series
+  const [seriesKey, setSeriesKey] = useState("");
+  const [seriesPart, setSeriesPart] = useState("");
 
   // cover image (track URL + public_id for server-side deletion later)
   const [coverUrl, setCoverUrl] = useState("");
