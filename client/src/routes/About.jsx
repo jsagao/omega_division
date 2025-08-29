@@ -12,7 +12,7 @@ export default function About() {
           </h2>
         </div>
         <p className="mt-6 text-base/7 text-gray-600 dark:text-gray-400">
-          Thank you for visiting my Page. My name is James Agao, and I'm a Full Stack Software
+          Thank you for visiting my Page. My name is James and I'm a Full Stack Software
           Developer, concentrating in back-end and database technologies. My interest grew from
           being curious about the internet of things, while constantly observing the progression of
           emerging technologies. I wanted to be a part of that progression and it is where this
