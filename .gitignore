@@ -30,3 +30,6 @@ Thumbs.db
 # --- Build / Deploy ---
 .env.local
 .env.*.local
+
+# Omega Division — Confidential Plans
+OMEGA_*.md
