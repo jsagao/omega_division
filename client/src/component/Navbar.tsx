@@ -6,7 +6,6 @@ import {
   SignInButton,
   SignOutButton,
   UserButton,
-  useUser,
 } from "@clerk/clerk-react";
 
 const NAV_LINKS = [
@@ -19,8 +18,6 @@ const NAV_LINKS = [
 
 export default function Navbar(): React.ReactElement {
   const [open, setOpen] = useState<boolean>(false);
-  const { user } = useUser();
-  const isAdmin = user?.publicMetadata?.role === "admin";
   const location = useLocation();
 
   useEffect(() => {
@@ -85,28 +82,6 @@ export default function Navbar(): React.ReactElement {
             </SignedOut>
 
             <SignedIn>
-              {isAdmin && (
-                <Link
-                  to="/write"
-                  title="Write a post"
-                  className="p-2 rounded-lg hover:bg-white/5 text-gold transition-colors"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="w-5 h-5"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M16.862 3.487a2.25 2.25 0 013.182 3.182L8.25 18.563 4.5 19.5l.937-3.75L16.862 3.487z"
-                    />
-                  </svg>
-                </Link>
-              )}
               <UserButton />
               <SignOutButton>
                 <button className="px-3 py-1.5 text-sm font-mono tracking-wider rounded-lg border border-white/10 text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-colors">
@@ -196,29 +171,6 @@ export default function Navbar(): React.ReactElement {
             </SignedOut>
 
             <SignedIn>
-              {isAdmin && (
-                <Link
-                  to="/write"
-                  onClick={() => setOpen(false)}
-                  className="flex items-center gap-3 px-4 py-3 font-mono tracking-wider rounded-lg bg-gold/10 text-gold hover:bg-gold/20 transition-colors"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="w-5 h-5"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M16.862 3.487a2.25 2.25 0 013.182 3.182L8.25 18.563 4.5 19.5l.937-3.75L16.862 3.487z"
-                    />
-                  </svg>
-                  WRITE
-                </Link>
-              )}
               <SignOutButton>
                 <button
                   onClick={() => setOpen(false)}
