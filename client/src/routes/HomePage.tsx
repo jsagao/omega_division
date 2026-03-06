@@ -7,7 +7,6 @@ import MarketPulse from "../component/MarketPulse";
 import SentimentGauge from "../component/SentimentGauge";
 import GeoRiskIndicator from "../component/GeoRiskIndicator";
 import NewsletterSignup from "../component/NewsletterSignup";
-import ParticleField from "../component/ParticleField";
 import Image from "../component/Image";
 import TrendingTickers from "../component/TrendingTickers";
 import EconomicCalendar from "../component/EconomicCalendar";
@@ -287,14 +286,15 @@ const HomePage: React.FC = () => {
 
           {/* ========== MAIN CONTENT ========== */}
           <div className="flex-1 min-w-0 flex flex-col gap-4">
-            {/* Hero row: featured article + globe/clocks/pulse */}
+            {/* Globe command center */}
+            <BentoBox className="p-6">
+              <GlobeView />
+            </BentoBox>
+
+            {/* Hero row: featured article + clocks/pulse */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
               {/* Hero featured article */}
               <BentoBox className="lg:col-span-2 relative">
-                <div className="absolute inset-0 pointer-events-none z-0 opacity-30">
-                  <ParticleField />
-                </div>
-
                 {featuredStatus === "loading" ? (
                   <div className="relative z-10 p-6 space-y-4">
                     <div className="w-full h-52 md:h-[340px] rounded-xl bg-surface-raised animate-pulse" />
@@ -339,11 +339,8 @@ const HomePage: React.FC = () => {
                 ) : null}
               </BentoBox>
 
-              {/* Globe + Clocks + Market Pulse */}
+              {/* Clocks + Market Pulse */}
               <div className="flex flex-col gap-4">
-                <BentoBox className="p-4">
-                  <GlobeView />
-                </BentoBox>
                 <BentoBox className="p-4">
                   <WorldClocks />
                 </BentoBox>
