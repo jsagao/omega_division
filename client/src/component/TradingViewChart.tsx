@@ -40,7 +40,7 @@ export default function TradingViewChart(): React.ReactElement {
     script.async = true;
     script.innerHTML = JSON.stringify({
       autosize: true,
-      symbol: tvSymbol,
+      symbol: "AAPL",
       interval: "D",
       timezone: "Etc/UTC",
       theme: "dark",
