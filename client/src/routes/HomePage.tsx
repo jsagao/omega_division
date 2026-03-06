@@ -17,6 +17,11 @@ import Watchlist from "../component/Watchlist";
 import QuickLinks from "../component/QuickLinks";
 import SocialFeed from "../component/SocialFeed";
 import GlobeView from "../component/GlobeView";
+import TradingViewChart from "../component/TradingViewChart";
+import SectorHeatmap from "../component/SectorHeatmap";
+import CryptoFearGreed from "../component/CryptoFearGreed";
+import MacroIndicators from "../component/MacroIndicators";
+import VolatilitySurface from "../component/VolatilitySurface";
 import { CityProvider } from "../context/CityContext";
 import type { NewsItem, NewsPayload } from "../types";
 
@@ -282,6 +287,12 @@ const HomePage: React.FC = () => {
             <SidePanel>
               <YieldRates />
             </SidePanel>
+            <SidePanel>
+              <VolatilitySurface />
+            </SidePanel>
+            <SidePanel>
+              <MacroIndicators />
+            </SidePanel>
           </aside>
 
           {/* ========== MAIN CONTENT ========== */}
@@ -291,52 +302,11 @@ const HomePage: React.FC = () => {
               <GlobeView />
             </BentoBox>
 
-            {/* Hero row: featured article + clocks/pulse */}
+            {/* Chart row: TradingView chart (city-synced) + clocks/pulse */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              {/* Hero featured article */}
-              <BentoBox className="lg:col-span-2 relative">
-                {featuredStatus === "loading" ? (
-                  <div className="relative z-10 p-6 space-y-4">
-                    <div className="w-full h-52 md:h-[340px] rounded-xl bg-surface-raised animate-pulse" />
-                    <div className="h-6 w-2/3 rounded bg-surface-raised animate-pulse" />
-                    <div className="h-4 w-1/2 rounded bg-surface-raised animate-pulse" />
-                  </div>
-                ) : main ? (
-                  <Link to={`/posts/${main.id}`} className="block relative z-10 group">
-                    <div className="w-full h-52 md:h-[340px] overflow-hidden">
-                      <Image
-                        src={heroSrc}
-                        alt={main.title}
-                        onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
-                          const key = (main.category || "general").toLowerCase();
-                          e.currentTarget.src =
-                            CATEGORY_FALLBACKS[key] || CATEGORY_FALLBACKS.general;
-                        }}
-                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                        width={900}
-                        height={340}
-                      />
-                    </div>
-                    <div className="p-5 space-y-2">
-                      <div className="flex items-center gap-3 text-xs">
-                        {main.category && (
-                          <span className="px-2 py-0.5 rounded bg-gold/15 text-gold font-mono text-[10px] tracking-wider uppercase">
-                            {main.category}
-                          </span>
-                        )}
-                        <span className="text-slate-500 font-mono">
-                          {main.author || "anonymous"}
-                        </span>
-                      </div>
-                      <h2 className="text-xl md:text-2xl font-bold text-white group-hover:text-gold transition-colors">
-                        {main.title}
-                      </h2>
-                      <p className="text-sm text-slate-400 line-clamp-2">
-                        {mainPreview || "\u2014"}
-                      </p>
-                    </div>
-                  </Link>
-                ) : null}
+              {/* TradingView chart — synced to selected city's primary index */}
+              <BentoBox className="lg:col-span-2 p-4">
+                <TradingViewChart />
               </BentoBox>
 
               {/* Clocks + Market Pulse */}
@@ -349,6 +319,48 @@ const HomePage: React.FC = () => {
                 </BentoBox>
               </div>
             </div>
+
+            {/* Featured article spotlight */}
+            {main && (
+              <BentoBox>
+                <Link to={`/posts/${main.id}`} className="flex flex-col md:flex-row group">
+                  <div className="w-full md:w-1/3 h-48 md:h-auto overflow-hidden shrink-0">
+                    <Image
+                      src={heroSrc}
+                      alt={main.title}
+                      onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
+                        const key = (main.category || "general").toLowerCase();
+                        e.currentTarget.src = CATEGORY_FALLBACKS[key] || CATEGORY_FALLBACKS.general;
+                      }}
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      width={460}
+                      height={200}
+                    />
+                  </div>
+                  <div className="p-5 flex flex-col justify-center gap-2">
+                    <div className="flex items-center gap-3 text-xs">
+                      <span className="px-2 py-0.5 rounded bg-gold/15 text-gold font-mono text-[10px] tracking-wider uppercase">
+                        Featured
+                      </span>
+                      {main.category && (
+                        <span className="text-slate-500 font-mono text-[10px] uppercase">
+                          {main.category}
+                        </span>
+                      )}
+                    </div>
+                    <h2 className="text-lg md:text-xl font-bold text-white group-hover:text-gold transition-colors">
+                      {main.title}
+                    </h2>
+                    <p className="text-sm text-slate-400 line-clamp-2">
+                      {mainPreview || "\u2014"}
+                    </p>
+                    <span className="text-slate-500 font-mono text-[10px]">
+                      {main.author || "anonymous"}
+                    </span>
+                  </div>
+                </Link>
+              </BentoBox>
+            )}
 
             {/* FT-style staggered content: islands + headline links */}
             <div>
@@ -648,6 +660,12 @@ const HomePage: React.FC = () => {
             </SidePanel>
             <SidePanel>
               <QuickLinks />
+            </SidePanel>
+            <SidePanel>
+              <SectorHeatmap />
+            </SidePanel>
+            <SidePanel>
+              <CryptoFearGreed />
             </SidePanel>
             <SidePanel>
               <SocialFeed />

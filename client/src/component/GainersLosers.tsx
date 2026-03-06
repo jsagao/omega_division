@@ -1,9 +1,7 @@
 import { useEffect, useState } from "react";
+import { useCity } from "../context/CityContext";
 
 const API: string = import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8000";
-
-// Top movers — free via Yahoo Finance backend
-const MOVERS = "META,GOOGL,JPM,V,UNH,XOM,LLY,AVGO,JNJ,WMT";
 
 interface Quote {
   symbol: string;
@@ -12,20 +10,21 @@ interface Quote {
 }
 
 export default function GainersLosers(): React.ReactElement {
+  const { city } = useCity();
   const [quotes, setQuotes] = useState<Quote[]>([]);
 
   useEffect(() => {
     let alive = true;
     (async () => {
       try {
-        const res = await fetch(`${API}/api/quotes?symbols=${MOVERS}`);
+        const res = await fetch(`${API}/api/quotes?symbols=${city.trendingSymbols}`);
         if (!res.ok) return;
         const json: { quotes: Quote[] } = await res.json();
         if (alive) setQuotes(json.quotes);
       } catch { /* non-critical */ }
     })();
     return () => { alive = false; };
-  }, []);
+  }, [city.trendingSymbols]);
 
   const sorted = [...quotes].sort((a, b) => b.percent - a.percent);
   const gainers = sorted.filter((q) => q.percent >= 0).slice(0, 5);
@@ -36,7 +35,7 @@ export default function GainersLosers(): React.ReactElement {
     const sign = q.percent >= 0 ? "+" : "";
     return (
       <div className="flex justify-between items-center text-xs font-mono">
-        <span className="text-white">{q.symbol}</span>
+        <span className="text-white">{q.symbol.split(".")[0]}</span>
         <span className={color}>
           {sign}{q.percent.toFixed(2)}%
         </span>
@@ -48,7 +47,7 @@ export default function GainersLosers(): React.ReactElement {
     return (
       <div>
         <h4 className="text-[10px] font-mono text-slate-500 tracking-[0.15em] uppercase mb-2">
-          Movers
+          Movers — {city.short}
         </h4>
         <div className="space-y-1.5">
           {Array.from({ length: 6 }).map((_, i) => (
@@ -65,7 +64,7 @@ export default function GainersLosers(): React.ReactElement {
   return (
     <div>
       <h4 className="text-[10px] font-mono text-slate-500 tracking-[0.15em] uppercase mb-2">
-        Movers
+        Movers — {city.short}
       </h4>
       {gainers.length > 0 && (
         <div className="mb-2">
