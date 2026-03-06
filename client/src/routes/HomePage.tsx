@@ -17,6 +17,8 @@ import GainersLosers from "../component/GainersLosers";
 import Watchlist from "../component/Watchlist";
 import QuickLinks from "../component/QuickLinks";
 import SocialFeed from "../component/SocialFeed";
+import GlobeView from "../component/GlobeView";
+import { CityProvider } from "../context/CityContext";
 import type { NewsItem, NewsPayload } from "../types";
 
 const API: string = import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8000";
@@ -218,6 +220,7 @@ const HomePage: React.FC = () => {
   const headlineNews = newsItems.slice(0, 12);
 
   return (
+    <CityProvider>
     <div className="min-h-screen bg-navy-900 relative">
       {/* Subtle gradient accents */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
@@ -284,11 +287,11 @@ const HomePage: React.FC = () => {
 
           {/* ========== MAIN CONTENT ========== */}
           <div className="flex-1 min-w-0 flex flex-col gap-4">
-            {/* Hero row: featured article + clocks/pulse */}
+            {/* Hero row: featured article + globe/clocks/pulse */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
               {/* Hero featured article */}
               <BentoBox className="lg:col-span-2 relative">
-                <div className="absolute inset-0 pointer-events-none z-0">
+                <div className="absolute inset-0 pointer-events-none z-0 opacity-30">
                   <ParticleField />
                 </div>
 
@@ -336,8 +339,11 @@ const HomePage: React.FC = () => {
                 ) : null}
               </BentoBox>
 
-              {/* Clocks + Market Pulse */}
+              {/* Globe + Clocks + Market Pulse */}
               <div className="flex flex-col gap-4">
+                <BentoBox className="p-4">
+                  <GlobeView />
+                </BentoBox>
                 <BentoBox className="p-4">
                   <WorldClocks />
                 </BentoBox>
@@ -663,6 +669,7 @@ const HomePage: React.FC = () => {
         </div>
       </div>
     </div>
+    </CityProvider>
   );
 };
 

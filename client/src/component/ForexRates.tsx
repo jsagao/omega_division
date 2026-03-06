@@ -1,15 +1,10 @@
 import { useEffect, useState } from "react";
+import { useCity } from "../context/CityContext";
 
 const API: string = import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8000";
 
-const PAIRS = "EURUSD=X,GBPUSD=X,JPY=X,CADUSD=X";
-
-const LABELS: Record<string, string> = {
-  "EURUSD=X": "EUR/USD",
-  "GBPUSD=X": "GBP/USD",
-  "JPY=X": "USD/JPY",
-  "CADUSD=X": "USD/CAD",
-};
+// Always show these major pairs plus the selected city's local currency
+const BASE_PAIRS = ["EURUSD=X", "GBPUSD=X", "JPY=X"];
 
 interface Quote {
   symbol: string;
@@ -17,21 +12,35 @@ interface Quote {
   percent: number;
 }
 
+const LABELS: Record<string, string> = {
+  "EURUSD=X": "EUR/USD",
+  "GBPUSD=X": "GBP/USD",
+  "JPY=X": "USD/JPY",
+};
+
 export default function ForexRates(): React.ReactElement {
+  const { city } = useCity();
   const [quotes, setQuotes] = useState<Quote[]>([]);
+
+  // Add city's local pair if not already in base
+  const pairs = BASE_PAIRS.includes(city.currencyPair)
+    ? BASE_PAIRS
+    : [...BASE_PAIRS.slice(0, 3), city.currencyPair];
+
+  const allLabels = { ...LABELS, [city.currencyPair]: city.currencyLabel };
 
   useEffect(() => {
     let alive = true;
     (async () => {
       try {
-        const res = await fetch(`${API}/api/quotes?symbols=${PAIRS}`);
+        const res = await fetch(`${API}/api/quotes?symbols=${pairs.join(",")}`);
         if (!res.ok) return;
         const json: { quotes: Quote[] } = await res.json();
         if (alive) setQuotes(json.quotes);
       } catch { /* non-critical */ }
     })();
     return () => { alive = false; };
-  }, []);
+  }, [pairs.join(",")]);
 
   return (
     <div>
@@ -47,7 +56,7 @@ export default function ForexRates(): React.ReactElement {
               </div>
             ))
           : quotes.map((q) => {
-              const label = LABELS[q.symbol] ?? q.symbol;
+              const label = allLabels[q.symbol] ?? q.symbol;
               const color = q.percent >= 0 ? "text-emerald-400" : "text-red-400";
               const sign = q.percent >= 0 ? "+" : "";
               return (
