@@ -9,6 +9,7 @@ import GeoRiskIndicator from "../component/GeoRiskIndicator";
 import NewsletterSignup from "../component/NewsletterSignup";
 import ParticleField from "../component/ParticleField";
 import Image from "../component/Image";
+import type { NewsItem, NewsPayload } from "../types";
 
 const API: string = import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8000";
 
@@ -146,6 +147,50 @@ const HomePage: React.FC = () => {
     };
   }, []);
 
+  /* RSS news headlines */
+  const [newsItems, setNewsItems] = useState<NewsItem[]>([]);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const res = await fetch(`${API}/rss/finance-home`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const json: NewsPayload = await res.json();
+        const all: NewsItem[] = [
+          ...(json.hero ? [json.hero] : []),
+          ...(json.topRight || []),
+          ...(json.subCards || []),
+          ...(json.latest || []),
+        ];
+        // Deduplicate by url/title
+        const seen = new Set<string>();
+        const unique: NewsItem[] = [];
+        for (const item of all) {
+          const key = (item.url || item.title || "").trim().toLowerCase();
+          if (!key || seen.has(key)) continue;
+          seen.add(key);
+          unique.push(item);
+        }
+        if (alive) setNewsItems(unique);
+      } catch {
+        // News feed is non-critical — silently fail
+      }
+    })();
+    return () => { alive = false; };
+  }, []);
+
+  /* Interleave: blog posts at positions 0,2,4 — news at 1,3,5 */
+  const hybridGrid = useMemo(() => {
+    const grid: { type: "blog"; data: BlogPost }[] | { type: "news"; data: NewsItem }[] = [];
+    const maxPairs = Math.max(posts.length, newsItems.length, 3);
+    for (let i = 0; i < maxPairs && grid.length < 6; i++) {
+      if (i < posts.length) (grid as any[]).push({ type: "blog", data: posts[i] });
+      if (i < newsItems.length && grid.length < 6) (grid as any[]).push({ type: "news", data: newsItems[i] });
+    }
+    return grid as ({ type: "blog"; data: BlogPost } | { type: "news"; data: NewsItem })[];
+  }, [posts, newsItems]);
+
   return (
     <div className="min-h-screen bg-navy-900 relative">
       {/* Subtle gradient accents */}
@@ -259,11 +304,19 @@ const HomePage: React.FC = () => {
             </div>
           </div>
 
-          {/* ROW 2: Latest blog posts grid */}
+          {/* ROW 2: Hybrid content feed — blog posts + live news */}
           <div>
-            <h3 className="text-xs font-mono text-slate-500 tracking-[0.15em] uppercase mb-3">
-              Latest Research
-            </h3>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-xs font-mono text-slate-500 tracking-[0.15em] uppercase">
+                Latest Research &amp; News
+              </h3>
+              <Link
+                to="/news"
+                className="text-[11px] font-mono text-gold/60 hover:text-gold transition-colors tracking-wider uppercase"
+              >
+                All News →
+              </Link>
+            </div>
             {postsLoading ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {Array.from({ length: 6 }).map((_, i) => (
@@ -279,44 +332,113 @@ const HomePage: React.FC = () => {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {posts.map((post) => {
-                  const src = coverSrc(post);
-                  return (
-                    <BentoBox key={post.id}>
-                      <Link to={`/posts/${post.id}`} className="block group">
-                        <div className="w-full h-40 overflow-hidden">
-                          <Image
-                            src={src}
-                            alt={post.title}
-                            onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
-                              const key = (post.category || "general").toLowerCase();
-                              e.currentTarget.src =
-                                CATEGORY_FALLBACKS[key] || CATEGORY_FALLBACKS.general;
-                            }}
-                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                            width={460}
-                            height={160}
-                          />
-                        </div>
-                        <div className="p-4 space-y-2">
-                          <div className="flex items-center gap-2 text-xs">
-                            {post.category && (
-                              <span className="px-2 py-0.5 rounded bg-gold/15 text-gold font-mono text-[10px] tracking-wider uppercase">
-                                {post.category}
+                {hybridGrid.map((item, idx) => {
+                  if (item.type === "blog") {
+                    const post = item.data;
+                    const src = coverSrc(post);
+                    return (
+                      <BentoBox key={`blog-${post.id}`}>
+                        <Link to={`/posts/${post.id}`} className="block group">
+                          <div className="w-full h-40 overflow-hidden">
+                            <Image
+                              src={src}
+                              alt={post.title}
+                              onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
+                                const key = (post.category || "general").toLowerCase();
+                                e.currentTarget.src =
+                                  CATEGORY_FALLBACKS[key] || CATEGORY_FALLBACKS.general;
+                              }}
+                              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                              width={460}
+                              height={160}
+                            />
+                          </div>
+                          <div className="p-4 space-y-2">
+                            <div className="flex items-center gap-2 text-xs">
+                              {post.category && (
+                                <span className="px-2 py-0.5 rounded bg-gold/15 text-gold font-mono text-[10px] tracking-wider uppercase">
+                                  {post.category}
+                                </span>
+                              )}
+                              <span className="text-slate-500 font-mono text-[10px]">
+                                {post.author || "anonymous"}
                               </span>
-                            )}
-                            <span className="text-slate-500 font-mono text-[10px]">
-                              {post.author || "anonymous"}
+                            </div>
+                            <h4 className="text-sm font-semibold text-white line-clamp-2 group-hover:text-gold transition-colors">
+                              {post.title}
+                            </h4>
+                            <p className="text-xs text-slate-400 line-clamp-2">
+                              {previewFrom(post) || "\u2014"}
+                            </p>
+                          </div>
+                        </Link>
+                      </BentoBox>
+                    );
+                  }
+
+                  /* News card */
+                  const news = item.data;
+                  return (
+                    <BentoBox key={`news-${news.id || news.url || idx}`}>
+                      <a
+                        href={news.url || "#"}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="block group"
+                      >
+                        {news.image ? (
+                          <div className="w-full h-40 overflow-hidden relative">
+                            <img
+                              src={news.image}
+                              alt={news.title}
+                              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                            />
+                            <span className="absolute top-2 left-2 px-1.5 py-0.5 rounded text-[9px] font-bold font-mono tracking-widest uppercase bg-red-500 text-white">
+                              LIVE
                             </span>
                           </div>
+                        ) : (
+                          <div className="w-full h-40 bg-gradient-to-br from-navy-900 to-surface-raised flex items-center justify-center relative">
+                            <svg
+                              viewBox="0 0 24 24"
+                              className="w-8 h-8 text-gold/20"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="1.5"
+                            >
+                              <path d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2" />
+                            </svg>
+                            <span className="absolute top-2 left-2 px-1.5 py-0.5 rounded text-[9px] font-bold font-mono tracking-widest uppercase bg-red-500 text-white">
+                              LIVE
+                            </span>
+                          </div>
+                        )}
+                        <div className="p-4 space-y-2">
+                          <div className="flex items-center gap-2 text-xs">
+                            <span className="px-2 py-0.5 rounded bg-red-500/15 text-red-400 font-mono text-[10px] tracking-wider uppercase">
+                              News
+                            </span>
+                            {news.source && (
+                              <span className="text-slate-500 font-mono text-[10px] uppercase">
+                                {news.source}
+                              </span>
+                            )}
+                            {news.age && (
+                              <span className="text-slate-600 font-mono text-[10px]">
+                                {news.age}
+                              </span>
+                            )}
+                          </div>
                           <h4 className="text-sm font-semibold text-white line-clamp-2 group-hover:text-gold transition-colors">
-                            {post.title}
+                            {news.title}
                           </h4>
-                          <p className="text-xs text-slate-400 line-clamp-2">
-                            {previewFrom(post) || "\u2014"}
-                          </p>
+                          {news.kicker && (
+                            <p className="text-xs text-slate-400 line-clamp-2">
+                              {news.kicker}
+                            </p>
+                          )}
                         </div>
-                      </Link>
+                      </a>
                     </BentoBox>
                   );
                 })}
