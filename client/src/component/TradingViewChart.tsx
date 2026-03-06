@@ -1,9 +1,32 @@
 import { useEffect, useRef } from "react";
 import { useCity } from "../context/CityContext";
 
+// TradingView uses its own symbol format, not Yahoo Finance tickers
+const TV_SYMBOL_MAP: Record<string, string> = {
+  "^GSPC": "SP:SPX",
+  "^DJI": "DJ:DJI",
+  "^IXIC": "NASDAQ:IXIC",
+  "^FTSE": "FTSE:UKX",
+  "^N225": "TVC:NI225",
+  "^HSI": "HSI:HSI",
+  "^STI": "SGX:STI",
+  "^GDAXI": "XETR:DAX",
+  "^AXJO": "ASX:XJO",
+  "^DFMGI": "DFM:DFMGI",
+  "^BSESN": "BSE:SENSEX",
+  "^NSEI": "NSE:NIFTY",
+  "^BVSP": "BMFBOVESPA:IBOV",
+};
+
+function toTvSymbol(yahooSymbol: string): string {
+  return TV_SYMBOL_MAP[yahooSymbol] ?? yahooSymbol.replace(/^\^/, "");
+}
+
 export default function TradingViewChart(): React.ReactElement {
   const containerRef = useRef<HTMLDivElement>(null);
   const { city } = useCity();
+
+  const tvSymbol = toTvSymbol(city.primaryIndex);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -23,7 +46,7 @@ export default function TradingViewChart(): React.ReactElement {
     script.async = true;
     script.innerHTML = JSON.stringify({
       autosize: true,
-      symbol: city.primaryIndex,
+      symbol: tvSymbol,
       interval: "D",
       timezone: city.timezone,
       theme: "dark",
@@ -47,7 +70,7 @@ export default function TradingViewChart(): React.ReactElement {
         containerRef.current.innerHTML = "";
       }
     };
-  }, [city.primaryIndex, city.timezone]);
+  }, [tvSymbol, city.timezone]);
 
   return (
     <div className="flex flex-col h-full">
