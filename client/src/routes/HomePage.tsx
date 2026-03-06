@@ -9,6 +9,14 @@ import GeoRiskIndicator from "../component/GeoRiskIndicator";
 import NewsletterSignup from "../component/NewsletterSignup";
 import ParticleField from "../component/ParticleField";
 import Image from "../component/Image";
+import TrendingTickers from "../component/TrendingTickers";
+import EconomicCalendar from "../component/EconomicCalendar";
+import ForexRates from "../component/ForexRates";
+import YieldRates from "../component/YieldRates";
+import GainersLosers from "../component/GainersLosers";
+import Watchlist from "../component/Watchlist";
+import QuickLinks from "../component/QuickLinks";
+import SocialFeed from "../component/SocialFeed";
 import type { NewsItem, NewsPayload } from "../types";
 
 const API: string = import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8000";
@@ -90,6 +98,24 @@ function BentoBox({
   );
 }
 
+/* ---------- sidebar panel wrapper ---------- */
+
+function SidePanel({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}): React.ReactElement {
+  return (
+    <div
+      className={`rounded-xl bg-surface border border-white/5 p-3 transition-all hover:border-gold/10 ${className}`}
+    >
+      {children}
+    </div>
+  );
+}
+
 /* ---------- main component ---------- */
 
 const HomePage: React.FC = () => {
@@ -132,7 +158,6 @@ const HomePage: React.FC = () => {
         const res = await fetch(`${API}/posts?limit=6`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const json = await res.json();
-        // Handle both array and { posts: [...] } shapes
         const list: BlogPost[] = Array.isArray(json) ? json : json.posts ?? [];
         if (alive) {
           setPosts(list);
@@ -163,7 +188,6 @@ const HomePage: React.FC = () => {
           ...(json.subCards || []),
           ...(json.latest || []),
         ];
-        // Deduplicate by url/title
         const seen = new Set<string>();
         const unique: NewsItem[] = [];
         for (const item of all) {
@@ -174,22 +198,24 @@ const HomePage: React.FC = () => {
         }
         if (alive) setNewsItems(unique);
       } catch {
-        // News feed is non-critical — silently fail
+        /* non-critical */
       }
     })();
     return () => { alive = false; };
   }, []);
 
-  /* Interleave: blog posts at positions 0,2,4 — news at 1,3,5 */
-  const hybridGrid = useMemo(() => {
-    const grid: { type: "blog"; data: BlogPost }[] | { type: "news"; data: NewsItem }[] = [];
-    const maxPairs = Math.max(posts.length, newsItems.length, 3);
-    for (let i = 0; i < maxPairs && grid.length < 6; i++) {
-      if (i < posts.length) (grid as any[]).push({ type: "blog", data: posts[i] });
-      if (i < newsItems.length && grid.length < 6) (grid as any[]).push({ type: "news", data: newsItems[i] });
-    }
-    return grid as ({ type: "blog"; data: BlogPost } | { type: "news"; data: NewsItem })[];
-  }, [posts, newsItems]);
+  /*
+   * FT-style staggered grid:
+   * - "island" rich cards = blog posts with images (positions 0, 3, 4)
+   * - dense headline links = news items filling the rest
+   * Layout (2-col main area):
+   *   Row A: [Blog card span-2] [news headlines col]
+   *   Row B: [news headlines col] [Blog card]
+   *   Row C: [Blog card] [news headlines col]
+   */
+  const islandPosts = posts.slice(0, 3);
+  const extraPosts = posts.slice(3);
+  const headlineNews = newsItems.slice(0, 12);
 
   return (
     <div className="min-h-screen bg-navy-900 relative">
@@ -224,129 +250,282 @@ const HomePage: React.FC = () => {
         </svg>
       </div>
 
-      {/* ROW 0: Market Ticker — full width */}
+      {/* Market Ticker — full width */}
       <MarketTicker />
 
-      {/* MAIN CONTAINER */}
-      <div className="relative mx-auto max-w-[1400px] px-4 md:px-8 py-6">
-        <div className="flex flex-col gap-4">
-          {/* Heading — compact */}
-          <div className="flex flex-col gap-1">
-            <h1 className="text-2xl font-bold md:text-4xl lg:text-5xl text-white font-mono tracking-tight">
-              Omega <span className="text-gold">Division</span>
-            </h1>
-            <p className="text-sm md:text-base text-slate-400 font-mono">
-              Engineering the Future, One Line at a Time
-            </p>
-          </div>
+      {/* MAIN CONTAINER — 3-column: left sidebar | main | right sidebar */}
+      <div className="relative mx-auto max-w-[1600px] px-4 md:px-6 py-6">
+        {/* Heading */}
+        <div className="flex flex-col gap-1 mb-4">
+          <h1 className="text-2xl font-bold md:text-4xl lg:text-5xl text-white font-mono tracking-tight">
+            Omega <span className="text-gold">Division</span>
+          </h1>
+          <p className="text-sm md:text-base text-slate-400 font-mono">
+            Engineering the Future, One Line at a Time
+          </p>
+        </div>
 
-          {/* ROW 1: Hero + Sidebar */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            {/* LEFT 2/3: Hero featured article */}
-            <BentoBox className="lg:col-span-2 relative">
-              {/* Particle field background */}
-              <div className="absolute inset-0 pointer-events-none z-0">
-                <ParticleField />
-              </div>
+        <div className="flex gap-4">
+          {/* ========== LEFT SIDEBAR ========== */}
+          <aside className="hidden xl:flex flex-col gap-3 w-[220px] shrink-0">
+            <SidePanel>
+              <TrendingTickers />
+            </SidePanel>
+            <SidePanel>
+              <EconomicCalendar />
+            </SidePanel>
+            <SidePanel>
+              <ForexRates />
+            </SidePanel>
+            <SidePanel>
+              <YieldRates />
+            </SidePanel>
+          </aside>
 
-              {featuredStatus === "loading" ? (
-                <div className="relative z-10 p-6 space-y-4">
-                  <div className="w-full h-52 md:h-[340px] rounded-xl bg-surface-raised animate-pulse" />
-                  <div className="h-6 w-2/3 rounded bg-surface-raised animate-pulse" />
-                  <div className="h-4 w-1/2 rounded bg-surface-raised animate-pulse" />
+          {/* ========== MAIN CONTENT ========== */}
+          <div className="flex-1 min-w-0 flex flex-col gap-4">
+            {/* Hero row: featured article + clocks/pulse */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              {/* Hero featured article */}
+              <BentoBox className="lg:col-span-2 relative">
+                <div className="absolute inset-0 pointer-events-none z-0">
+                  <ParticleField />
                 </div>
-              ) : main ? (
-                <Link to={`/posts/${main.id}`} className="block relative z-10 group">
-                  <div className="w-full h-52 md:h-[340px] overflow-hidden">
-                    <Image
-                      src={heroSrc}
-                      alt={main.title}
-                      onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
-                        const key = (main.category || "general").toLowerCase();
-                        e.currentTarget.src =
-                          CATEGORY_FALLBACKS[key] || CATEGORY_FALLBACKS.general;
-                      }}
-                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                      width={900}
-                      height={340}
-                    />
+
+                {featuredStatus === "loading" ? (
+                  <div className="relative z-10 p-6 space-y-4">
+                    <div className="w-full h-52 md:h-[340px] rounded-xl bg-surface-raised animate-pulse" />
+                    <div className="h-6 w-2/3 rounded bg-surface-raised animate-pulse" />
+                    <div className="h-4 w-1/2 rounded bg-surface-raised animate-pulse" />
                   </div>
-                  <div className="p-5 space-y-2">
-                    <div className="flex items-center gap-3 text-xs">
-                      {main.category && (
-                        <span className="px-2 py-0.5 rounded bg-gold/15 text-gold font-mono text-[10px] tracking-wider uppercase">
-                          {main.category}
+                ) : main ? (
+                  <Link to={`/posts/${main.id}`} className="block relative z-10 group">
+                    <div className="w-full h-52 md:h-[340px] overflow-hidden">
+                      <Image
+                        src={heroSrc}
+                        alt={main.title}
+                        onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
+                          const key = (main.category || "general").toLowerCase();
+                          e.currentTarget.src =
+                            CATEGORY_FALLBACKS[key] || CATEGORY_FALLBACKS.general;
+                        }}
+                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        width={900}
+                        height={340}
+                      />
+                    </div>
+                    <div className="p-5 space-y-2">
+                      <div className="flex items-center gap-3 text-xs">
+                        {main.category && (
+                          <span className="px-2 py-0.5 rounded bg-gold/15 text-gold font-mono text-[10px] tracking-wider uppercase">
+                            {main.category}
+                          </span>
+                        )}
+                        <span className="text-slate-500 font-mono">
+                          {main.author || "anonymous"}
                         </span>
-                      )}
-                      <span className="text-slate-500 font-mono">
-                        {main.author || "anonymous"}
-                      </span>
+                      </div>
+                      <h2 className="text-xl md:text-2xl font-bold text-white group-hover:text-gold transition-colors">
+                        {main.title}
+                      </h2>
+                      <p className="text-sm text-slate-400 line-clamp-2">
+                        {mainPreview || "\u2014"}
+                      </p>
                     </div>
-                    <h2 className="text-xl md:text-2xl font-bold text-white group-hover:text-gold transition-colors">
-                      {main.title}
-                    </h2>
-                    <p className="text-sm text-slate-400 line-clamp-2">
-                      {mainPreview || "\u2014"}
-                    </p>
-                  </div>
-                </Link>
-              ) : null}
-            </BentoBox>
-
-            {/* RIGHT 1/3: Clocks + Market Pulse */}
-            <div className="flex flex-col gap-4">
-              <BentoBox className="p-4">
-                <WorldClocks />
+                  </Link>
+                ) : null}
               </BentoBox>
-              <BentoBox className="p-4">
-                <MarketPulse />
-              </BentoBox>
-            </div>
-          </div>
 
-          {/* ROW 2: Hybrid content feed — blog posts + live news */}
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-xs font-mono text-slate-500 tracking-[0.15em] uppercase">
-                Latest Research &amp; News
-              </h3>
-              <Link
-                to="/news"
-                className="text-[11px] font-mono text-gold/60 hover:text-gold transition-colors tracking-wider uppercase"
-              >
-                All News →
-              </Link>
-            </div>
-            {postsLoading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <BentoBox key={i}>
-                    <div className="w-full h-40 bg-surface-raised animate-pulse" />
-                    <div className="p-4 space-y-2">
-                      <div className="h-3 w-16 rounded bg-surface-raised animate-pulse" />
-                      <div className="h-4 w-5/6 rounded bg-surface-raised animate-pulse" />
-                      <div className="h-3 w-full rounded bg-surface-raised animate-pulse" />
-                    </div>
-                  </BentoBox>
-                ))}
+              {/* Clocks + Market Pulse */}
+              <div className="flex flex-col gap-4">
+                <BentoBox className="p-4">
+                  <WorldClocks />
+                </BentoBox>
+                <BentoBox className="p-4">
+                  <MarketPulse />
+                </BentoBox>
               </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {hybridGrid.map((item, idx) => {
-                  if (item.type === "blog") {
-                    const post = item.data;
-                    const src = coverSrc(post);
-                    return (
-                      <BentoBox key={`blog-${post.id}`}>
-                        <Link to={`/posts/${post.id}`} className="block group">
+            </div>
+
+            {/* FT-style staggered content: islands + headline links */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-xs font-mono text-slate-500 tracking-[0.15em] uppercase">
+                  Latest Research &amp; News
+                </h3>
+                <Link
+                  to="/news"
+                  className="text-[11px] font-mono text-gold/60 hover:text-gold transition-colors tracking-wider uppercase"
+                >
+                  All News →
+                </Link>
+              </div>
+
+              {postsLoading ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <BentoBox key={i}>
+                      <div className="w-full h-40 bg-surface-raised animate-pulse" />
+                      <div className="p-4 space-y-2">
+                        <div className="h-3 w-16 rounded bg-surface-raised animate-pulse" />
+                        <div className="h-4 w-5/6 rounded bg-surface-raised animate-pulse" />
+                        <div className="h-3 w-full rounded bg-surface-raised animate-pulse" />
+                      </div>
+                    </BentoBox>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col gap-4">
+                  {/* Row A: Blog island (span 2) + news headline stack */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    {islandPosts[0] && (
+                      <BentoBox className="lg:col-span-2">
+                        <Link to={`/posts/${islandPosts[0].id}`} className="block group">
+                          <div className="w-full h-48 overflow-hidden">
+                            <Image
+                              src={coverSrc(islandPosts[0])}
+                              alt={islandPosts[0].title}
+                              onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
+                                const key = (islandPosts[0].category || "general").toLowerCase();
+                                e.currentTarget.src = CATEGORY_FALLBACKS[key] || CATEGORY_FALLBACKS.general;
+                              }}
+                              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                              width={700}
+                              height={192}
+                            />
+                          </div>
+                          <div className="p-4 space-y-2">
+                            <div className="flex items-center gap-2 text-xs">
+                              {islandPosts[0].category && (
+                                <span className="px-2 py-0.5 rounded bg-gold/15 text-gold font-mono text-[10px] tracking-wider uppercase">
+                                  {islandPosts[0].category}
+                                </span>
+                              )}
+                              <span className="text-slate-500 font-mono text-[10px]">
+                                {islandPosts[0].author || "anonymous"}
+                              </span>
+                            </div>
+                            <h4 className="text-lg font-bold text-white group-hover:text-gold transition-colors">
+                              {islandPosts[0].title}
+                            </h4>
+                            <p className="text-sm text-slate-400 line-clamp-2">
+                              {previewFrom(islandPosts[0]) || "\u2014"}
+                            </p>
+                          </div>
+                        </Link>
+                      </BentoBox>
+                    )}
+                    {/* News headline stack */}
+                    <div className="rounded-xl bg-surface border border-white/5 p-4 flex flex-col gap-0">
+                      <h5 className="text-[10px] font-mono text-red-400/70 tracking-[0.15em] uppercase mb-2 flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                        Live Wire
+                      </h5>
+                      {headlineNews.slice(0, 5).map((news, i) => (
+                        <a
+                          key={news.id || news.url || i}
+                          href={news.url || "#"}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="block py-2 border-b border-white/5 last:border-0 group"
+                        >
+                          <p className="text-xs font-mono text-white leading-snug line-clamp-2 group-hover:text-gold transition-colors">
+                            {news.title}
+                          </p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            {news.source && (
+                              <span className="text-[9px] font-mono text-slate-500 uppercase">{news.source}</span>
+                            )}
+                            {news.age && (
+                              <span className="text-[9px] font-mono text-slate-600">{news.age}</span>
+                            )}
+                          </div>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Row B: News headline stack + blog island */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    {/* News headline stack */}
+                    <div className="rounded-xl bg-surface border border-white/5 p-4 flex flex-col gap-0">
+                      <h5 className="text-[10px] font-mono text-gold/50 tracking-[0.15em] uppercase mb-2">
+                        Market Headlines
+                      </h5>
+                      {headlineNews.slice(5, 9).map((news, i) => (
+                        <a
+                          key={news.id || news.url || i}
+                          href={news.url || "#"}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="block py-2 border-b border-white/5 last:border-0 group"
+                        >
+                          <p className="text-xs font-mono text-white leading-snug line-clamp-2 group-hover:text-gold transition-colors">
+                            {news.title}
+                          </p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            {news.source && (
+                              <span className="text-[9px] font-mono text-slate-500 uppercase">{news.source}</span>
+                            )}
+                            {news.age && (
+                              <span className="text-[9px] font-mono text-slate-600">{news.age}</span>
+                            )}
+                          </div>
+                        </a>
+                      ))}
+                    </div>
+                    {/* Blog island */}
+                    {islandPosts[1] && (
+                      <BentoBox className="lg:col-span-2">
+                        <Link to={`/posts/${islandPosts[1].id}`} className="block group">
+                          <div className="w-full h-48 overflow-hidden">
+                            <Image
+                              src={coverSrc(islandPosts[1])}
+                              alt={islandPosts[1].title}
+                              onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
+                                const key = (islandPosts[1].category || "general").toLowerCase();
+                                e.currentTarget.src = CATEGORY_FALLBACKS[key] || CATEGORY_FALLBACKS.general;
+                              }}
+                              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                              width={700}
+                              height={192}
+                            />
+                          </div>
+                          <div className="p-4 space-y-2">
+                            <div className="flex items-center gap-2 text-xs">
+                              {islandPosts[1].category && (
+                                <span className="px-2 py-0.5 rounded bg-gold/15 text-gold font-mono text-[10px] tracking-wider uppercase">
+                                  {islandPosts[1].category}
+                                </span>
+                              )}
+                              <span className="text-slate-500 font-mono text-[10px]">
+                                {islandPosts[1].author || "anonymous"}
+                              </span>
+                            </div>
+                            <h4 className="text-lg font-bold text-white group-hover:text-gold transition-colors">
+                              {islandPosts[1].title}
+                            </h4>
+                            <p className="text-sm text-slate-400 line-clamp-2">
+                              {previewFrom(islandPosts[1]) || "\u2014"}
+                            </p>
+                          </div>
+                        </Link>
+                      </BentoBox>
+                    )}
+                  </div>
+
+                  {/* Row C: Blog island + news headlines + extra posts */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {islandPosts[2] && (
+                      <BentoBox>
+                        <Link to={`/posts/${islandPosts[2].id}`} className="block group">
                           <div className="w-full h-40 overflow-hidden">
                             <Image
-                              src={src}
-                              alt={post.title}
+                              src={coverSrc(islandPosts[2])}
+                              alt={islandPosts[2].title}
                               onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
-                                const key = (post.category || "general").toLowerCase();
-                                e.currentTarget.src =
-                                  CATEGORY_FALLBACKS[key] || CATEGORY_FALLBACKS.general;
+                                const key = (islandPosts[2].category || "general").toLowerCase();
+                                e.currentTarget.src = CATEGORY_FALLBACKS[key] || CATEGORY_FALLBACKS.general;
                               }}
                               className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                               width={460}
@@ -355,122 +534,132 @@ const HomePage: React.FC = () => {
                           </div>
                           <div className="p-4 space-y-2">
                             <div className="flex items-center gap-2 text-xs">
-                              {post.category && (
+                              {islandPosts[2].category && (
                                 <span className="px-2 py-0.5 rounded bg-gold/15 text-gold font-mono text-[10px] tracking-wider uppercase">
-                                  {post.category}
+                                  {islandPosts[2].category}
                                 </span>
                               )}
                               <span className="text-slate-500 font-mono text-[10px]">
-                                {post.author || "anonymous"}
+                                {islandPosts[2].author || "anonymous"}
                               </span>
                             </div>
                             <h4 className="text-sm font-semibold text-white line-clamp-2 group-hover:text-gold transition-colors">
-                              {post.title}
+                              {islandPosts[2].title}
                             </h4>
-                            <p className="text-xs text-slate-400 line-clamp-2">
-                              {previewFrom(post) || "\u2014"}
-                            </p>
                           </div>
                         </Link>
                       </BentoBox>
-                    );
-                  }
-
-                  /* News card */
-                  const news = item.data;
-                  return (
-                    <BentoBox key={`news-${news.id || news.url || idx}`}>
-                      <a
-                        href={news.url || "#"}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="block group"
-                      >
-                        {news.image ? (
-                          <div className="w-full h-40 overflow-hidden relative">
-                            <img
-                              src={news.image}
-                              alt={news.title}
-                              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                            />
-                            <span className="absolute top-2 left-2 px-1.5 py-0.5 rounded text-[9px] font-bold font-mono tracking-widest uppercase bg-red-500 text-white">
-                              LIVE
-                            </span>
-                          </div>
-                        ) : (
-                          <div className="w-full h-40 bg-gradient-to-br from-navy-900 to-surface-raised flex items-center justify-center relative">
-                            <svg
-                              viewBox="0 0 24 24"
-                              className="w-8 h-8 text-gold/20"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="1.5"
-                            >
-                              <path d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2" />
-                            </svg>
-                            <span className="absolute top-2 left-2 px-1.5 py-0.5 rounded text-[9px] font-bold font-mono tracking-widest uppercase bg-red-500 text-white">
-                              LIVE
-                            </span>
-                          </div>
-                        )}
-                        <div className="p-4 space-y-2">
-                          <div className="flex items-center gap-2 text-xs">
-                            <span className="px-2 py-0.5 rounded bg-red-500/15 text-red-400 font-mono text-[10px] tracking-wider uppercase">
-                              News
-                            </span>
+                    )}
+                    {/* More news headlines */}
+                    <div className="rounded-xl bg-surface border border-white/5 p-4 flex flex-col gap-0">
+                      <h5 className="text-[10px] font-mono text-gold/50 tracking-[0.15em] uppercase mb-2">
+                        More Headlines
+                      </h5>
+                      {headlineNews.slice(9, 12).map((news, i) => (
+                        <a
+                          key={news.id || news.url || i}
+                          href={news.url || "#"}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="block py-2 border-b border-white/5 last:border-0 group"
+                        >
+                          <p className="text-xs font-mono text-white leading-snug line-clamp-2 group-hover:text-gold transition-colors">
+                            {news.title}
+                          </p>
+                          <div className="flex items-center gap-2 mt-0.5">
                             {news.source && (
-                              <span className="text-slate-500 font-mono text-[10px] uppercase">
-                                {news.source}
-                              </span>
+                              <span className="text-[9px] font-mono text-slate-500 uppercase">{news.source}</span>
                             )}
                             {news.age && (
-                              <span className="text-slate-600 font-mono text-[10px]">
-                                {news.age}
-                              </span>
+                              <span className="text-[9px] font-mono text-slate-600">{news.age}</span>
                             )}
                           </div>
-                          <h4 className="text-sm font-semibold text-white line-clamp-2 group-hover:text-gold transition-colors">
-                            {news.title}
-                          </h4>
-                          {news.kicker && (
-                            <p className="text-xs text-slate-400 line-clamp-2">
-                              {news.kicker}
-                            </p>
-                          )}
-                        </div>
-                      </a>
-                    </BentoBox>
-                  );
-                })}
-              </div>
-            )}
+                        </a>
+                      ))}
+                    </div>
+                    {/* Extra blog posts as compact cards */}
+                    {extraPosts.length > 0 && (
+                      <div className="flex flex-col gap-3">
+                        {extraPosts.slice(0, 3).map((post) => (
+                          <Link
+                            key={post.id}
+                            to={`/posts/${post.id}`}
+                            className="flex gap-3 items-start rounded-xl bg-surface border border-white/5 p-3 group hover:border-gold/20 transition-all"
+                          >
+                            <div className="w-20 h-14 rounded-lg overflow-hidden shrink-0">
+                              <Image
+                                src={coverSrc(post)}
+                                alt={post.title}
+                                onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
+                                  const key = (post.category || "general").toLowerCase();
+                                  e.currentTarget.src = CATEGORY_FALLBACKS[key] || CATEGORY_FALLBACKS.general;
+                                }}
+                                className="w-full h-full object-cover"
+                                width={80}
+                                height={56}
+                              />
+                            </div>
+                            <div className="min-w-0">
+                              {post.category && (
+                                <span className="text-[9px] font-mono text-gold/60 tracking-wider uppercase">
+                                  {post.category}
+                                </span>
+                              )}
+                              <p className="text-xs font-semibold text-white line-clamp-2 group-hover:text-gold transition-colors leading-snug">
+                                {post.title}
+                              </p>
+                            </div>
+                          </Link>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Gauges row */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <BentoBox className="p-4">
+                <SentimentGauge />
+              </BentoBox>
+              <BentoBox className="p-4">
+                <GeoRiskIndicator />
+              </BentoBox>
+              <BentoBox className="p-4">
+                <NewsletterSignup />
+              </BentoBox>
+            </div>
+
+            {/* Categories */}
+            <MainCategories />
           </div>
 
-          {/* ROW 3: Three equal columns */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <BentoBox className="p-4">
-              <SentimentGauge />
-            </BentoBox>
-            <BentoBox className="p-4">
-              <GeoRiskIndicator />
-            </BentoBox>
-            <BentoBox className="p-4">
-              <NewsletterSignup />
-            </BentoBox>
-          </div>
+          {/* ========== RIGHT SIDEBAR ========== */}
+          <aside className="hidden xl:flex flex-col gap-3 w-[220px] shrink-0">
+            <SidePanel>
+              <GainersLosers />
+            </SidePanel>
+            <SidePanel>
+              <Watchlist />
+            </SidePanel>
+            <SidePanel>
+              <QuickLinks />
+            </SidePanel>
+            <SidePanel>
+              <SocialFeed />
+            </SidePanel>
+          </aside>
+        </div>
 
-          {/* ROW 4: Categories */}
-          <MainCategories />
-
-          {/* ROW 5: Footer strip */}
-          <div className="text-center py-6 space-y-1">
-            <p className="text-xs font-mono text-slate-500 tracking-[0.15em]">
-              Quantitative Research &middot; Technology &middot; Capital Markets
-            </p>
-            <p className="text-xs font-mono text-slate-600">
-              Engineering the Future, One Line at a Time
-            </p>
-          </div>
+        {/* Footer strip */}
+        <div className="text-center py-6 space-y-1">
+          <p className="text-xs font-mono text-slate-500 tracking-[0.15em]">
+            Quantitative Research &middot; Technology &middot; Capital Markets
+          </p>
+          <p className="text-xs font-mono text-slate-600">
+            Engineering the Future, One Line at a Time
+          </p>
         </div>
       </div>
     </div>
