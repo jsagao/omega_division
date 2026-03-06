@@ -1,0 +1,822 @@
+// src/routes/Write.tsx
+import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { useUser } from "@clerk/clerk-react";
+import { useNavigate } from "react-router-dom";
+
+// Quill
+import "react-quill-new/dist/quill.snow.css";
+import ReactQuill from "react-quill-new";
+
+// YouTube (lightweight)
+import LiteYouTubeEmbed from "react-lite-youtube-embed";
+import "react-lite-youtube-embed/dist/LiteYouTubeEmbed.css";
+
+// Cloudinary helpers
+import { uploadToCloudinary } from "../utils/uploadCloudinary";
+import { withTransform } from "../utils/withTransform";
+
+// API + Cloudinary env
+const API: string = import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8000";
+const CLOUD_NAME: string | undefined = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+const UPLOAD_PRESET: string | undefined = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
+
+// Transform defaults for final images in editor
+const EDITOR_IMG_WIDTH = 900;
+const EDITOR_IMG_QUALITY = 80; // 1..100
+const EDITOR_IMG_CROP = "limit";
+
+// Categories
+interface CategoryOption {
+  name: string;
+  value: string;
+}
+
+const categories: CategoryOption[] = [
+  { name: "Programming", value: "Programming" },
+  { name: "Data Science", value: "Data-science" },
+  { name: "Business", value: "Business" },
+  { name: "Technology", value: "Technology" },
+  { name: "Development", value: "Development" },
+  { name: "Travel", value: "Travel" },
+];
+
+// Limits
+const TITLE_MAX = 100;
+const EXCERPT_MAX = 250;
+const CONTENT_MAX = 5000;
+
+// Pending image type
+interface PendingImage {
+  tempUrl: string;
+  file: File;
+}
+
+// ---------- helpers ----------
+function stripHtml(html: string): string {
+  const div = document.createElement("div");
+  div.innerHTML = html || "";
+  return (div.textContent || div.innerText || "").trim();
+}
+
+// Robust YouTube ID extraction (watch, youtu.be, shorts, embed, with extra params)
+function getYouTubeId(url: string | undefined | null): string | null {
+  if (!url) return null;
+  const u = url.trim();
+
+  const mWatch = u.match(/[?&]v=([A-Za-z0-9_-]{11})/i);
+  if (mWatch) return mWatch[1];
+
+  const mBe = u.match(/youtu\.be\/([A-Za-z0-9_-]{11})(?:[?&].*)?$/i);
+  if (mBe) return mBe[1];
+
+  const mShort = u.match(/youtube\.com\/shorts\/([A-Za-z0-9_-]{11})(?:[?&].*)?$/i);
+  if (mShort) return mShort[1];
+
+  const mEmbed = u.match(/youtube\.com\/embed\/([A-Za-z0-9_-]{11})(?:[?&].*)?$/i);
+  if (mEmbed) return mEmbed[1];
+
+  const mAny = u.match(/(?:youtube\.com|youtu\.be)[^A-Za-z0-9_-]([A-Za-z0-9_-]{11})/i);
+  return mAny ? mAny[1] : null;
+}
+
+function getVimeoId(url: string | undefined | null): string | null {
+  if (!url) return null;
+  const m = url.trim().match(/vimeo\.com\/(\d+)/i);
+  return m ? m[1] : null;
+}
+
+function isDirectVideo(url: string | undefined | null): boolean {
+  return !!url && /\.(mp4|webm|ogg)(\?.*)?$/i.test(url.trim());
+}
+
+// ---------- component ----------
+export default function Write(): React.ReactElement {
+  const { isLoaded, isSignedIn, user } = useUser();
+  const navigate = useNavigate();
+
+  // form state
+  const [title, setTitle] = useState<string>("");
+  const [category, setCategory] = useState<string>(categories[0].value);
+  const [excerpt, setExcerpt] = useState<string>("");
+  const [content, setContent] = useState<string>("");
+  const [featuredSlot, setFeaturedSlot] = useState<string>("none");
+  const [featuredRank, setFeaturedRank] = useState<string>("");
+
+  // Series
+  const [seriesKey, setSeriesKey] = useState<string>("");
+  const [seriesPart, setSeriesPart] = useState<string>("");
+
+  // cover image (track URL + public_id for server-side deletion later)
+  const [coverUrl, setCoverUrl] = useState<string>("");
+  const [coverPublicId, setCoverPublicId] = useState<string>("");
+  const [coverUploading, setCoverUploading] = useState<boolean>(false);
+  const [showCoverPreview, setShowCoverPreview] = useState<boolean>(false);
+
+  // videos
+  const [videoUrls, setVideoUrls] = useState<string[]>([""]);
+
+  // errors / submit
+  const [errorMsg, setErrorMsg] = useState<string>("");
+  const [submitting, setSubmitting] = useState<boolean>(false);
+
+  // ReactQuill refs
+  const rqRef = useRef<any>(null);
+  const [quill, setQuill] = useState<any>(null);
+  const setRQ = useCallback((instance: any) => {
+    rqRef.current = instance || null;
+  }, []);
+
+  // Prevent duplicate handler bindings (StrictMode)
+  const handlersBoundRef = useRef<boolean>(false);
+
+  // Debounce to prevent double-insert from weird paste/drop combos
+  const insertingRef = useRef<boolean>(false);
+
+  // Track pending images
+  const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
+  // Also collect public_ids of editor images uploaded on publish
+  const editorPublicIdsRef = useRef<string[]>([]);
+
+  // Acquire quill instance safely
+  useEffect(() => {
+    let done = false;
+    let retries = 0;
+    function tryGet(): void {
+      if (done) return;
+      const rq = rqRef.current;
+      if (!rq || typeof rq.getEditor !== "function") {
+        if (retries++ < 30) requestAnimationFrame(tryGet);
+        return;
+      }
+      try {
+        const editor = rq.getEditor();
+        if (editor) {
+          setQuill(editor);
+          done = true;
+          return;
+        }
+      } catch {}
+      if (retries++ < 30) requestAnimationFrame(tryGet);
+    }
+    requestAnimationFrame(tryGet);
+    return () => {
+      done = true;
+    };
+  }, []);
+
+  // live lengths
+  const titleLen = title.length;
+  const excerptLen = excerpt.length;
+  const contentPlain = useMemo(() => stripHtml(content), [content]);
+  const contentLen = contentPlain.length;
+
+  const derivedPreview = useMemo<string>(() => {
+    if (excerpt.trim()) return excerpt.trim();
+    return contentPlain.slice(0, 180);
+  }, [excerpt, contentPlain]);
+
+  const overLimits = titleLen > TITLE_MAX || excerptLen > EXCERPT_MAX || contentLen > CONTENT_MAX;
+
+  function handleTitleChange(v: string): void {
+    setTitle(v.slice(0, TITLE_MAX));
+  }
+  function handleExcerptChange(v: string): void {
+    setExcerpt(v.slice(0, EXCERPT_MAX));
+  }
+  function handleQuillChange(html: string): void {
+    const nextPlain = stripHtml(html);
+    if (nextPlain.length <= CONTENT_MAX) setContent(html);
+  }
+
+  // ---------- Cover image ----------
+  const coverInputRef = useRef<HTMLInputElement>(null);
+  function pickCover(): void {
+    coverInputRef.current?.click();
+  }
+
+  async function removeCover(): Promise<void> {
+    // Just clear the preview; the real deletion is handled on post delete server-side via public_id
+    setCoverUrl("");
+    setCoverPublicId("");
+  }
+
+  async function onSelectCover(e: React.ChangeEvent<HTMLInputElement>): Promise<void> {
+    try {
+      setErrorMsg("");
+      const file = e.target.files?.[0];
+      if (!file) return;
+      if (!file.type.startsWith("image/")) {
+        setErrorMsg("Please choose an image file.");
+        return;
+      }
+      if (!CLOUD_NAME || !UPLOAD_PRESET) {
+        setErrorMsg("Missing Cloudinary config. Add VITE_CLOUDINARY_* env vars.");
+        return;
+      }
+
+      setCoverUploading(true);
+
+      // Upload new one (unsigned upload). Do NOT append return_delete_token here.
+      const up = await uploadToCloudinary(file, {
+        cloudName: CLOUD_NAME,
+        uploadPreset: UPLOAD_PRESET,
+        folder: "blog",
+        context: { via: "write-cover" },
+      }); // returns { secure_url, public_id, ... }
+
+      const transformedUrl = withTransform(up.secure_url, {
+        width: 1600,
+        quality: 85,
+        crop: "limit",
+      });
+
+      setCoverUrl(transformedUrl);
+      setCoverPublicId(up.public_id || "");
+      setShowCoverPreview(true);
+    } catch (err: unknown) {
+      setErrorMsg((err as Error).message || "Cover upload failed.");
+    } finally {
+      setCoverUploading(false);
+      e.target.value = "";
+    }
+  }
+
+  // ---------- Editor image insert (blob now, upload on publish) ----------
+  async function insertLocalImage(file: File): Promise<void> {
+    if (!file.type.startsWith("image/")) throw new Error("Please choose an image file.");
+    if (!quill) throw new Error("Editor not ready yet. Try again in a moment.");
+
+    if (insertingRef.current) return;
+    insertingRef.current = true;
+    setTimeout(() => (insertingRef.current = false), 200);
+
+    const tempUrl = URL.createObjectURL(file);
+    const range = quill.getSelection(true) || { index: quill.getLength(), length: 0 };
+    quill.insertEmbed(range.index, "image", tempUrl, "user");
+    quill.setSelection(range.index + 1, 0);
+
+    setPendingImages((prev) => [...prev, { tempUrl, file }]);
+  }
+
+  const embedInputRef = useRef<HTMLInputElement>(null);
+  function pickEmbedImage(): void {
+    embedInputRef.current?.click();
+  }
+  async function onSelectEmbed(e: React.ChangeEvent<HTMLInputElement>): Promise<void> {
+    try {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      await insertLocalImage(file);
+    } catch (err: unknown) {
+      setErrorMsg((err as Error).message || "Image insert failed.");
+    } finally {
+      e.target.value = "";
+    }
+  }
+
+  // Prefill cover with user avatar once (optional)
+  useEffect(() => {
+    if (!coverUrl && user?.imageUrl) {
+      setCoverUrl(user.imageUrl);
+    }
+  }, [user, coverUrl]);
+
+  // Drag & drop / paste → insert blob; DO NOT upload yet
+  useEffect(() => {
+    if (!quill) return;
+    if (handlersBoundRef.current) return;
+
+    const root = quill.root as HTMLElement;
+
+    async function handleDrop(e: DragEvent): Promise<void> {
+      const dt = e.dataTransfer;
+      if (!dt || !dt.files || dt.files.length === 0) return;
+      const file = Array.from(dt.files).find((f) => f.type.startsWith("image/"));
+      if (!file) return;
+      e.preventDefault();
+      e.stopPropagation();
+      try {
+        await insertLocalImage(file);
+      } catch (err: unknown) {
+        setErrorMsg((err as Error).message || "Image insert failed.");
+      }
+    }
+
+    async function handlePaste(e: ClipboardEvent): Promise<void> {
+      const file = Array.from(e.clipboardData?.files || []).find((f: File) =>
+        f.type.startsWith("image/")
+      );
+      if (!file) return;
+      e.preventDefault();
+      e.stopPropagation();
+      try {
+        await insertLocalImage(file);
+      } catch (err: unknown) {
+        setErrorMsg((err as Error).message || "Image insert failed.");
+      }
+    }
+
+    root.addEventListener("drop", handleDrop as unknown as EventListener, { passive: false });
+    root.addEventListener("paste", handlePaste as unknown as EventListener);
+    handlersBoundRef.current = true;
+
+    return () => {
+      root.removeEventListener("drop", handleDrop as unknown as EventListener);
+      root.removeEventListener("paste", handlePaste as unknown as EventListener);
+      handlersBoundRef.current = false;
+    };
+  }, [quill]);
+
+  // Quill modules (toolbar)
+  const quillModules = useMemo(
+    () => ({
+      toolbar: {
+        container: [
+          [{ header: [1, 2, 3, false] }],
+          ["bold", "italic", "underline", "strike"],
+          [{ list: "ordered" }, { list: "bullet" }],
+          ["blockquote", "code-block"],
+          ["link", "image"],
+          [{ align: [] }],
+          ["clean"],
+        ],
+        handlers: {
+          image: () => pickEmbedImage(),
+        },
+      },
+    }),
+    []
+  );
+
+  // --- On Publish: upload pending blob images and rewrite the HTML ---
+  async function resolveEditorImages(
+    html: string,
+    pending: PendingImage[]
+  ): Promise<{ html: string; publicIds: string[] }> {
+    if (!html) return { html, publicIds: [] };
+    let nextHtml = html;
+    const publicIds: string[] = [];
+
+    for (const { tempUrl, file } of pending) {
+      if (!nextHtml.includes(tempUrl)) continue;
+
+      const up = await uploadToCloudinary(file, {
+        cloudName: CLOUD_NAME!,
+        uploadPreset: UPLOAD_PRESET!,
+        folder: "blog/content",
+        context: { via: "write-editor" },
+      }); // { secure_url, public_id, ... }
+
+      const finalUrl = withTransform(up.secure_url, {
+        width: EDITOR_IMG_WIDTH,
+        quality: EDITOR_IMG_QUALITY,
+        crop: EDITOR_IMG_CROP,
+      });
+
+      nextHtml = nextHtml.split(tempUrl).join(finalUrl);
+      URL.revokeObjectURL(tempUrl);
+
+      if (up.public_id) publicIds.push(up.public_id);
+    }
+
+    // Convert <img src="data:image/..."> → upload → replace
+    const dataUrlRegex = /<img[^>]+src=["'](data:image\/[^"']+)["'][^>]*>/gi;
+    const matches = [...nextHtml.matchAll(dataUrlRegex)];
+    for (const m of matches) {
+      const dataUrl = m[1];
+      try {
+        const file = dataURLtoFile(dataUrl, "pasted-image.png");
+        const up = await uploadToCloudinary(file, {
+          cloudName: CLOUD_NAME!,
+          uploadPreset: UPLOAD_PRESET!,
+          folder: "blog/content",
+          context: { via: "write-editor-dataurl" },
+        });
+        const finalUrl = withTransform(up.secure_url, {
+          width: EDITOR_IMG_WIDTH,
+          quality: EDITOR_IMG_QUALITY,
+          crop: EDITOR_IMG_CROP,
+        });
+        nextHtml = nextHtml.split(dataUrl).join(finalUrl);
+        if (up.public_id) publicIds.push(up.public_id);
+      } catch {
+        // ignore this one
+      }
+    }
+
+    return { html: nextHtml, publicIds };
+  }
+
+  function dataURLtoFile(dataUrl: string, filename: string): File {
+    const arr = dataUrl.split(",");
+    const mimeMatch = arr[0].match(/:(.*?);/);
+    const mime = mimeMatch ? mimeMatch[1] : "image/png";
+    const bstr = atob(arr[1] || "");
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) u8arr[n] = bstr.charCodeAt(n);
+    return new File([u8arr], filename, { type: mime });
+  }
+
+  // --- Video handlers ---
+  function handleVideoChange(i: number, val: string): void {
+    const next = [...videoUrls];
+    next[i] = val;
+    setVideoUrls(next);
+  }
+  function addVideoField(): void {
+    setVideoUrls((v) => [...v, ""]);
+  }
+  function removeVideoField(i: number): void {
+    setVideoUrls((v) => v.filter((_, idx) => idx !== i));
+  }
+
+  // submit
+  if (!isLoaded) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-100">
+        <p className="text-lg text-gray-700">Loading...</p>
+      </div>
+    );
+  }
+  if (!isSignedIn) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-100">
+        <p className="text-lg text-gray-700">You need to be signed in to write a post.</p>
+      </div>
+    );
+  }
+
+  function normalizeCover(x: unknown): string {
+    if (typeof x === "string") return x;
+    if (x && typeof x === "object" && (x as Record<string, unknown>).secure_url) {
+      return withTransform((x as Record<string, unknown>).secure_url as string, { width: 1600, quality: 85, crop: "limit" });
+    }
+    return "";
+  }
+
+  async function handlePublish(e: React.FormEvent<HTMLFormElement>): Promise<void> {
+    e.preventDefault();
+    setErrorMsg("");
+
+    if (!title.trim()) {
+      setErrorMsg("Please enter a title.");
+      return;
+    }
+    if (overLimits) {
+      setErrorMsg("Please shorten fields that exceed their limits before publishing.");
+      return;
+    }
+
+    if (!seriesKey.trim() && seriesPart) {
+      setErrorMsg("If you set a Part #, please provide a Series key.");
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+
+      const { html: resolvedHtml, publicIds } = await resolveEditorImages(content, pendingImages);
+      editorPublicIdsRef.current = publicIds || [];
+
+      const authorName =
+        user?.fullName || user?.username || user?.primaryEmailAddress?.emailAddress || "anonymous";
+
+      const payload: Record<string, unknown> = {
+        title: title.trim(),
+        category,
+        author: authorName,
+        excerpt: excerpt.trim(),
+        content: (resolvedHtml || "").trim(),
+        description: (excerpt || "").trim(),
+        cover_image_url: normalizeCover(coverUrl),
+        cover_image_public_id: coverPublicId || null,
+        author_image_url: user?.imageUrl || "",
+        featured_slot: featuredSlot,
+        featured_rank: featuredRank ? Number(featuredRank) : null,
+        video_urls: videoUrls.map((u) => u.trim()).filter(Boolean),
+        content_image_public_ids: editorPublicIdsRef.current,
+
+        // NEW
+        series_key: seriesKey.trim() || null,
+        series_part: seriesPart ? Number(seriesPart) : null,
+      };
+
+      const res: Response = await fetch(`${API}/posts`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const txt = await res.text().catch(() => "");
+        throw new Error(`Failed to publish (HTTP ${res.status}) ${txt}`);
+      }
+      const data: { id: string | number } = await res.json();
+      navigate(`/posts/${data.id}`);
+    } catch (err: unknown) {
+      setErrorMsg((err as Error).message || "Something went wrong while publishing.");
+    } finally {
+      setSubmitting(false);
+      // clear pending blobs to avoid leaks if you stay on page
+      pendingImages.forEach(({ tempUrl }) => URL.revokeObjectURL(tempUrl));
+      setPendingImages([]);
+    }
+  }
+
+  return (
+    <div className="h-[calc(100vh-64px)] md:h-[calc(100vh-80px)] flex flex-col gap-6 m-11">
+      {/* Quill & video preview styles + LiteYouTube polish */}
+      <style>{`
+        .ql-editor img{max-width:100%;height:auto;display:block;margin:1rem auto;}
+
+        .video-grid { display: grid; gap: 1rem; }
+        @media (min-width: 768px) { .video-grid { grid-template-columns: 1fr 1fr; } }
+
+        .player-wrapper { position: relative; padding-top: 56.25%; border-radius: 0.75rem; overflow: hidden; }
+        .player-wrapper iframe, .player-wrapper video { position:absolute; top:0; left:0; width:100%; height:100%; border:0; }
+
+        /* LiteYouTubeEmbed overrides */
+        .yt-card { border-radius: 0.75rem; overflow: hidden; }
+        .yt-card .yt-lite{
+          background: transparent !important;
+          aspect-ratio: 16/9;
+          width: 100%;
+          height: auto;
+          display: block;
+          position: relative;
+        }
+        .yt-card .yt-lite::before{ content: none !important; }
+        .yt-card .yt-lite > img{ width:100%; height:100%; object-fit: cover; display:block; }
+      `}</style>
+
+      <h1 className="text-xl font-light">Create a New Post</h1>
+
+      {errorMsg && (
+        <div className="p-3 rounded-md bg-red-50 text-red-700 text-sm border border-red-200">
+          {errorMsg}
+        </div>
+      )}
+
+      <form className="flex flex-col gap-6 flex-1 mb-6" onSubmit={handlePublish}>
+        {/* Cover image */}
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={pickCover}
+            className="w-max p-2 shadow-md rounded-xl text-sm text-gray-700 bg-white border"
+            disabled={coverUploading}
+          >
+            {coverUploading ? "Uploading…" : coverUrl ? "Change Cover Image" : "Add a Cover Image"}
+          </button>
+
+          {coverUrl && (
+            <>
+              <img
+                src={coverUrl}
+                alt="Cover preview"
+                className="h-24 w-40 md:h-28 md:w-48 object-cover rounded-lg border cursor-zoom-in"
+                onClick={() => setShowCoverPreview(true)}
+              />
+              <button
+                type="button"
+                onClick={removeCover}
+                className="text-xs px-2 py-1 rounded border hover:bg-gray-50"
+                disabled={coverUploading}
+                title="Remove cover (image will be destroyed if the post is deleted)"
+              >
+                Remove
+              </button>
+            </>
+          )}
+
+          <input
+            ref={coverInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={onSelectCover}
+          />
+        </div>
+
+        {/* Lightbox */}
+        {showCoverPreview && coverUrl && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
+            onClick={() => setShowCoverPreview(false)}
+            role="dialog"
+            aria-modal="true"
+          >
+            <img
+              src={coverUrl}
+              alt="Cover large preview"
+              className="max-h-[85vh] max-w-[90vw] rounded-xl shadow-2xl"
+            />
+          </div>
+        )}
+
+        {/* Title */}
+        <div>
+          <input
+            type="text"
+            placeholder="My Awesome Story"
+            value={title}
+            maxLength={TITLE_MAX}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleTitleChange(e.target.value)}
+            className="text-4xl font-semibold bg-transparent outline-none w-full"
+          />
+          <div className="mt-1 text-xs text-gray-500">
+            {titleLen}/{TITLE_MAX}
+          </div>
+        </div>
+
+        {/* Category */}
+        <div className="flex items-center gap-4">
+          <label className="text-gray-500 font-medium">Category:</label>
+          <select
+            name="cat"
+            value={category}
+            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setCategory(e.target.value)}
+            className="p-2 rounded-xl bg-white shadow-md"
+          >
+            {categories.map((c) => (
+              <option key={c.value} value={c.value}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Excerpt */}
+        <div>
+          <textarea
+            name="desc"
+            placeholder="A short description (optional)"
+            value={excerpt}
+            maxLength={EXCERPT_MAX}
+            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handleExcerptChange(e.target.value)}
+            className="w-full bg-white shadow-md p-4 rounded-xl outline-none min-h-[260px] text-lg leading-relaxed"
+            rows={6}
+          />
+          <div className="mt-1 text-xs text-gray-500">
+            {excerptLen}/{EXCERPT_MAX}
+          </div>
+          <div className="mt-2 text-xs text-gray-500">
+            Preview:&nbsp;
+            <span className="italic">
+              {derivedPreview || "Start typing above or in the editor…"}
+            </span>
+          </div>
+        </div>
+
+        {/* Editor */}
+        <div>
+          <ReactQuill
+            ref={setRQ}
+            theme="snow"
+            modules={quillModules}
+            className="flex-1 p-2 rounded-xl bg-white shadow-md min-h-[520px] text-base md:text-lg"
+            value={content}
+            onChange={handleQuillChange}
+          />
+          <div className="mt-1 text-xs text-gray-500">
+            {contentLen}/{CONTENT_MAX} (plain text)
+          </div>
+          <input
+            ref={embedInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={onSelectEmbed}
+          />
+        </div>
+
+        {/* Video URLs */}
+        <div>
+          <label className="text-gray-500 font-medium">Video URLs</label>
+          <div className="mt-2 video-grid">
+            {videoUrls.map((url, i) => {
+              const u = url.trim();
+              const ytId = getYouTubeId(u);
+              const vmId = getVimeoId(u);
+              const direct = isDirectVideo(u);
+
+              return (
+                <div key={i} className="flex flex-col gap-2">
+                  <div className="flex gap-2">
+                    <input
+                      value={url}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleVideoChange(i, e.target.value)}
+                      placeholder="https://youtube.com/watch?v=…  |  https://vimeo.com/123456789  |  https://.../video.mp4"
+                      className="flex-1 p-2 rounded-xl bg-white shadow-md border"
+                    />
+                    {videoUrls.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeVideoField(i)}
+                        className="px-2 py-1 rounded border text-red-600"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Previews */}
+                  {ytId && (
+                    <div className="yt-card">
+                      <LiteYouTubeEmbed
+                        id={ytId}
+                        title={`YouTube video ${i + 1}`}
+                        poster="hqdefault"
+                        webp
+                      />
+                    </div>
+                  )}
+                  {vmId && (
+                    <div className="player-wrapper">
+                      <iframe
+                        src={`https://player.vimeo.com/video/${vmId}`}
+                        allow="autoplay; fullscreen; picture-in-picture"
+                        allowFullScreen
+                        title={`Vimeo video ${i + 1}`}
+                      />
+                    </div>
+                  )}
+                  {direct && (
+                    <div className="player-wrapper">
+                      <video controls playsInline src={u} />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <button
+            type="button"
+            onClick={addVideoField}
+            className="mt-2 text-sm text-indigo-700 hover:underline"
+          >
+            + Add another video
+          </button>
+        </div>
+
+        {/* Series (optional) */}
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="flex flex-col">
+            <label className="text-gray-500 text-sm font-medium">Series key</label>
+            <input
+              type="text"
+              value={seriesKey}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSeriesKey(e.target.value)}
+              placeholder='e.g. "My Journey"'
+              className="p-2 rounded-xl bg-white shadow-md w-64"
+            />
+          </div>
+          <div className="flex flex-col">
+            <label className="text-gray-500 text-sm font-medium">Part #</label>
+            <input
+              type="number"
+              min="1"
+              value={seriesPart}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSeriesPart(e.target.value)}
+              placeholder="1"
+              className="p-2 rounded-xl bg-white shadow-md w-28"
+            />
+          </div>
+          <p className="text-xs text-gray-500">Leave empty if this post is not part of a series.</p>
+        </div>
+
+        {/* Featured controls */}
+        <fieldset className="flex flex-wrap gap-4 items-center">
+          <legend className="text-gray-500 font-medium">Feature:</legend>
+          {["none", "main", "mini", "portfolio"].map((opt) => (
+            <label key={opt} className="flex items-center gap-2 text-sm">
+              <input
+                type="radio"
+                value={opt}
+                checked={featuredSlot === opt}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFeaturedSlot(e.target.value)}
+              />
+              {opt}
+            </label>
+          ))}
+          <input
+            type="number"
+            min="1"
+            placeholder="Rank (optional)"
+            className="p-2 rounded-xl bg-white shadow-md w-36"
+            value={featuredRank}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFeaturedRank(e.target.value)}
+          />
+        </fieldset>
+
+        <button
+          type="submit"
+          disabled={submitting || overLimits}
+          className="bg-blue-800 disabled:opacity-60 disabled:cursor-not-allowed text-white px-4 py-2 rounded-xl mt-2 font-medium w-max"
+        >
+          {submitting ? "Publishing…" : "Publish"}
+        </button>
+      </form>
+    </div>
+  );
+}
