@@ -1,134 +1,76 @@
-import { useEffect, useRef, useState } from "react";
-import { createChart, ColorType, CandlestickSeries } from "lightweight-charts";
-import type { IChartApi, ISeriesApi, CandlestickData, Time } from "lightweight-charts";
+import { useEffect, useRef, useMemo } from "react";
 import { useCity } from "../context/CityContext";
 
-const API: string = import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8000";
+/** Map Yahoo Finance symbols → TradingView symbols */
+const TV_SYMBOL_MAP: Record<string, string> = {
+  "^GSPC": "SP:SPX",
+  "^DJI": "DJ:DJI",
+  "^IXIC": "NASDAQ:IXIC",
+  "^FTSE": "LSE:UKX",
+  "^N225": "TVC:NI225",
+  "^HSI": "HSI:HSI",
+  "^STI": "SGX:STI",
+  "^GDAXI": "XETR:DAX",
+  "^AXJO": "ASX:XJO",
+  "^BSESN": "BSE:SENSEX",
+  "^BVSP": "BMFBOVESPA:IBOV",
+  "^DFMGI": "DFM:DFMGI",
+};
 
-type Period = "1mo" | "3mo" | "6mo" | "1y" | "2y";
-
-const PERIODS: { label: string; value: Period }[] = [
-  { label: "1M", value: "1mo" },
-  { label: "3M", value: "3mo" },
-  { label: "6M", value: "6mo" },
-  { label: "1Y", value: "1y" },
-  { label: "2Y", value: "2y" },
-];
+function toTvSymbol(yf: string): string {
+  return TV_SYMBOL_MAP[yf] ?? yf.replace(/^\^/, "");
+}
 
 export default function TradingViewChart(): React.ReactElement {
   const containerRef = useRef<HTMLDivElement>(null);
-  const chartRef = useRef<IChartApi | null>(null);
-  const seriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
   const { city } = useCity();
-  const [period, setPeriod] = useState<Period>("6mo");
-  const [loading, setLoading] = useState(true);
 
-  // Create chart once
+  const tvSymbol = useMemo(() => toTvSymbol(city.primaryIndex), [city.primaryIndex]);
+
   useEffect(() => {
-    if (!containerRef.current) return;
+    const container = containerRef.current;
+    if (!container) return;
 
-    const chart = createChart(containerRef.current, {
-      layout: {
-        background: { type: ColorType.Solid, color: "#0a0f1e" },
-        textColor: "#64748b",
-        fontFamily: "'JetBrains Mono', monospace",
-        fontSize: 11,
-      },
-      grid: {
-        vertLines: { color: "rgba(255,255,255,0.03)" },
-        horzLines: { color: "rgba(255,255,255,0.03)" },
-      },
-      timeScale: {
-        borderColor: "rgba(255,255,255,0.05)",
-        timeVisible: false,
-      },
-      rightPriceScale: {
-        borderColor: "rgba(255,255,255,0.05)",
-      },
-      crosshair: {
-        vertLine: { color: "rgba(201,168,76,0.3)", labelBackgroundColor: "#c9a84c" },
-        horzLine: { color: "rgba(201,168,76,0.3)", labelBackgroundColor: "#c9a84c" },
-      },
-      autoSize: true,
+    // Clear previous widget
+    container.innerHTML = "";
+
+    const script = document.createElement("script");
+    script.src = "https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js";
+    script.type = "text/javascript";
+    script.async = true;
+    script.innerHTML = JSON.stringify({
+      autosize: true,
+      symbol: tvSymbol,
+      interval: "D",
+      timezone: "Etc/UTC",
+      theme: "dark",
+      style: "1",
+      locale: "en",
+      backgroundColor: "rgba(10, 15, 30, 1)",
+      gridColor: "rgba(255, 255, 255, 0.03)",
+      allow_symbol_change: true,
+      calendar: false,
+      support_host: "https://www.tradingview.com",
     });
 
-    const series = chart.addSeries(CandlestickSeries, {
-      upColor: "#22c55e",
-      downColor: "#ef4444",
-      borderUpColor: "#22c55e",
-      borderDownColor: "#ef4444",
-      wickUpColor: "#22c55e",
-      wickDownColor: "#ef4444",
-    });
-
-    chartRef.current = chart;
-    seriesRef.current = series;
+    container.appendChild(script);
 
     return () => {
-      chart.remove();
-      chartRef.current = null;
-      seriesRef.current = null;
+      container.innerHTML = "";
     };
-  }, []);
-
-  // Fetch data when city or period changes
-  useEffect(() => {
-    let alive = true;
-    setLoading(true);
-
-    (async () => {
-      try {
-        const res = await fetch(
-          `${API}/api/chart?symbol=${encodeURIComponent(city.primaryIndex)}&period=${period}&interval=1d`
-        );
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const json: { bars: CandlestickData<Time>[] } = await res.json();
-
-        if (alive && seriesRef.current && json.bars.length > 0) {
-          seriesRef.current.setData(json.bars);
-          chartRef.current?.timeScale().fitContent();
-        }
-      } catch {
-        // silently fail
-      } finally {
-        if (alive) setLoading(false);
-      }
-    })();
-
-    return () => { alive = false; };
-  }, [city.primaryIndex, period]);
+  }, [tvSymbol]);
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2">
-          <h4 className="text-[10px] font-mono text-slate-500 tracking-[0.15em] uppercase">
-            {city.primaryLabel}
-          </h4>
-          <span className="text-[9px] font-mono text-slate-600">{city.primaryIndex}</span>
-          {loading && (
-            <span className="text-[9px] font-mono text-gold/50 animate-pulse">Loading...</span>
-          )}
-        </div>
-        <div className="flex gap-1">
-          {PERIODS.map((p) => (
-            <button
-              key={p.value}
-              onClick={() => setPeriod(p.value)}
-              className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-bold tracking-wider transition-all ${
-                period === p.value
-                  ? "bg-gold text-navy-900"
-                  : "bg-white/5 text-slate-500 hover:bg-white/10 hover:text-gold"
-              }`}
-            >
-              {p.label}
-            </button>
-          ))}
-        </div>
+      <div className="flex items-center gap-2 mb-2">
+        <h4 className="text-[10px] font-mono text-slate-500 tracking-[0.15em] uppercase">
+          {city.primaryLabel}
+        </h4>
+        <span className="text-[9px] font-mono text-slate-600">{tvSymbol}</span>
       </div>
       <div
         ref={containerRef}
-        className="flex-1 min-h-[300px] md:min-h-[380px] rounded-lg overflow-hidden"
+        className="flex-1 min-h-[300px] md:min-h-[480px] rounded-lg overflow-hidden"
       />
     </div>
   );
