@@ -41,17 +41,17 @@ export default function ConfirmModal({
       role="dialog"
     >
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/40" onClick={() => !loading && onClose?.()} />
+      <div className="absolute inset-0 bg-black/60" onClick={() => !loading && onClose?.()} />
 
       {/* Dialog */}
-      <div className="relative z-[101] w-full max-w-md rounded-xl bg-white p-5 shadow-lg">
-        <h3 className="text-lg font-semibold">{title}</h3>
-        <p className="mt-2 text-sm text-gray-600">{message}</p>
+      <div className="relative z-[101] w-full max-w-md rounded-xl bg-surface border border-white/5 p-5 shadow-lg">
+        <h3 className="text-lg font-semibold text-white">{title}</h3>
+        <p className="mt-2 text-sm text-slate-400">{message}</p>
 
         <div className="mt-5 flex items-center justify-end gap-2">
           <button
             type="button"
-            className="rounded-lg border px-4 py-2 text-sm hover:bg-gray-50 disabled:opacity-50"
+            className="rounded-lg border border-gold/30 text-gold px-4 py-2 text-sm hover:bg-gold/10 disabled:opacity-50"
             onClick={onClose}
             disabled={loading}
           >
@@ -59,7 +59,7 @@ export default function ConfirmModal({
           </button>
           <button
             type="button"
-            className="rounded-lg bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-500 disabled:opacity-50"
+            className="rounded-lg bg-red-600/80 px-4 py-2 text-sm text-white hover:bg-red-500 disabled:opacity-50"
             onClick={onConfirm}
             disabled={loading}
           >

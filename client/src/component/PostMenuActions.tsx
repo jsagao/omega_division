@@ -21,8 +21,8 @@ export default function PostMenuActions({
   disabled = false,
   resourceName = "this post",
 }: PostMenuActionsProps): React.ReactElement {
-  const icon = "w-5 h-5 flex-shrink-0 text-gray-700 group-hover:text-blue-600 transition-colors";
-  const rowBtn = "flex items-center gap-2 py-2 text-sm group select-none";
+  const icon = "w-5 h-5 flex-shrink-0 text-slate-400 group-hover:text-gold transition-colors";
+  const rowBtn = "flex items-center gap-2 py-2 text-sm text-slate-300 group select-none";
   const [confirmOpen, setConfirmOpen] = useState<boolean>(false);
   const [deleting, setDeleting] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
@@ -44,7 +44,7 @@ export default function PostMenuActions({
 
   return (
     <div className="space-y-1">
-      <h1 className="text-lg font-semibold">Actions</h1>
+      <h1 className="text-lg font-semibold text-white">Actions</h1>
 
       {/* Save -- visible to everyone */}
       <button

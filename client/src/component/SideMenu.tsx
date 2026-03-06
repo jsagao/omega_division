@@ -47,11 +47,11 @@ export default function SideMenu(): React.ReactElement {
 
   return (
     <aside className="px-4 h-max sticky top-8">
-      <h2 className="mb-4 text-sm font-medium">Search</h2>
+      <h2 className="mb-4 text-sm font-medium text-white">Search</h2>
       <Search />
 
-      <h2 className="mb-4 mt-6 text-sm font-medium">Filter</h2>
-      <div className="flex flex-col gap-2 text-sm">
+      <h2 className="mb-4 mt-6 text-sm font-medium text-white">Filter</h2>
+      <div className="flex flex-col gap-2 text-sm text-slate-300">
         {SORTS.map((s) => (
           <label key={s.value} className="flex items-center gap-2 cursor-pointer">
             <input
@@ -60,14 +60,14 @@ export default function SideMenu(): React.ReactElement {
               value={s.value}
               checked={activeSort === s.value}
               onChange={onChangeSort}
-              className="appearance-none w-4 h-4 border-[1.5px] border-blue-800 cursor-pointer rounded-sm checked:bg-blue-800"
+              className="appearance-none w-4 h-4 border-[1.5px] border-gold/50 cursor-pointer rounded-sm checked:bg-gold"
             />
             {s.label}
           </label>
         ))}
       </div>
 
-      <h2 className="mb-4 mt-6 text-sm font-medium">Categories</h2>
+      <h2 className="mb-4 mt-6 text-sm font-medium text-white">Categories</h2>
       <nav className="flex flex-col gap-2 text-sm">
         {CATEGORIES.map((c) => {
           const params = new URLSearchParams(searchParams);
@@ -84,8 +84,8 @@ export default function SideMenu(): React.ReactElement {
               className={[
                 "px-3 py-1.5 rounded-md transition",
                 isActive
-                  ? "bg-indigo-600 text-white"
-                  : "text-indigo-700 underline hover:no-underline hover:bg-indigo-50",
+                  ? "bg-gold text-navy-900"
+                  : "text-gold hover:text-gold-light hover:bg-gold/10",
               ].join(" ")}
             >
               {c.name}

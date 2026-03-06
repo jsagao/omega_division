@@ -69,18 +69,18 @@ export default function PostList(): React.ReactElement {
 
   return (
     <section className="py-6 space-y-6">
-      <h2 className="text-xl font-semibold">Recent Posts</h2>
+      <h2 className="text-xl font-semibold text-white">Recent Posts</h2>
 
       {status === "loading" && (
         <div className="space-y-4">
           {[...Array(3)].map((_, i) => (
-            <div key={i} className="h-24 rounded-xl bg-gray-100 animate-pulse" />
+            <div key={i} className="h-24 rounded-xl bg-surface-raised animate-pulse" />
           ))}
         </div>
       )}
 
       {status === "error" && (
-        <p className="text-red-600">
+        <p className="text-red-400">
           Couldn't load posts.{" "}
           <button onClick={() => location.reload()} className="underline">
             Retry
@@ -91,13 +91,13 @@ export default function PostList(): React.ReactElement {
       {status === "ok" && (
         <div className="space-y-4">
           {posts.length === 0 ? (
-            <p className="text-gray-600">
+            <p className="text-slate-400">
               No posts yet.
               <SignedIn>
                 {isAdmin && (
                   <>
                     {" "}
-                    <Link to="/write" className="text-indigo-700 underline">
+                    <Link to="/write" className="text-gold hover:text-gold-light underline">
                       Write one
                     </Link>
                     ?

@@ -133,8 +133,8 @@ export default function PostListItem({ post, onDeleted }: PostListItemProps): Re
 
   return (
     <article
-      className={`p-4 border rounded-lg bg-white flex items-center gap-4 transition
-                  ${deleting ? "opacity-60 pointer-events-none" : "hover:-translate-y-1 hover:shadow-lg"}`}
+      className={`p-4 border border-white/5 rounded-lg bg-surface flex items-center gap-4 transition
+                  ${deleting ? "opacity-60 pointer-events-none" : "hover:-translate-y-1 hover:shadow-lg hover:shadow-black/20"}`}
     >
       {/* Thumbnail */}
       <Link to={`/posts/${post.id}`} className="shrink-0 w-28 h-20 overflow-hidden rounded-md">
@@ -155,30 +155,30 @@ export default function PostListItem({ post, onDeleted }: PostListItemProps): Re
       <div className="flex-1 min-w-0">
         <Link
           to={`/posts/${post.id}`}
-          className="block text-base md:text-lg font-semibold text-indigo-700 hover:underline truncate"
+          className="block text-base md:text-lg font-semibold text-white hover:underline truncate"
           title={title}
         >
           {title}
         </Link>
 
         {/* Meta: Author . Category */}
-        <div className="mt-1 text-xs sm:text-sm text-gray-600 flex flex-wrap items-center gap-x-2 gap-y-1">
+        <div className="mt-1 text-xs sm:text-sm text-slate-400 flex flex-wrap items-center gap-x-2 gap-y-1">
           <span>By</span>
           {/* Route to About page when clicking author */}
-          <Link to="/about" className="font-medium text-indigo-700 hover:underline">
+          <Link to="/about" className="font-medium text-gold hover:text-gold-light">
             {author}
           </Link>
-          <span className="text-gray-300">|</span>
+          <span className="text-slate-600">|</span>
           <Link
             to={`/category/${encodeURIComponent(category.toLowerCase())}`}
-            className="text-indigo-700 hover:underline"
+            className="text-gold hover:text-gold-light"
           >
             {category}
           </Link>
         </div>
 
         {/* Excerpt */}
-        <p className="mt-1 text-sm text-gray-600 line-clamp-2">{post?.excerpt || ""}</p>
+        <p className="mt-1 text-sm text-slate-400 line-clamp-2">{post?.excerpt || ""}</p>
       </div>
 
       {/* Admin-only delete */}
@@ -186,7 +186,7 @@ export default function PostListItem({ post, onDeleted }: PostListItemProps): Re
         <button
           onClick={handleDelete}
           disabled={deleting}
-          className="ml-2 px-3 py-1.5 text-sm bg-red-600 text-white rounded hover:bg-red-500 disabled:opacity-60"
+          className="ml-2 px-3 py-1.5 text-sm bg-red-600/80 text-white rounded hover:bg-red-500 disabled:opacity-60"
         >
           {deleting ? "Deleting…" : "Delete"}
         </button>

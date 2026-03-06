@@ -30,12 +30,12 @@ export default function Search({ placeholder = "Search posts…", initial = "" }
         value={q}
         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setQ(e.target.value)}
         placeholder={placeholder}
-        className="flex-1 rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
+        className="flex-1 rounded-lg bg-navy-800 border border-white/10 text-slate-300 placeholder-slate-600 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gold/50"
         aria-label="Search posts"
       />
       <button
         type="submit"
-        className="px-3 py-2 rounded-lg bg-indigo-600 text-white text-sm hover:bg-indigo-700"
+        className="px-3 py-2 rounded-lg bg-gold text-navy-900 text-sm hover:bg-gold-light"
         aria-label="Search"
       >
         Search
@@ -46,7 +46,7 @@ export default function Search({ placeholder = "Search posts…", initial = "" }
         <button
           type="button"
           onClick={() => setQ("")}
-          className="px-2 py-2 rounded-lg border text-sm hover:bg-gray-50"
+          className="px-2 py-2 rounded-lg border border-white/10 text-slate-400 text-sm hover:bg-white/5"
           aria-label="Clear search"
           title="Clear"
         >

@@ -2,126 +2,124 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Let Tailwind control colors via dark mode */
+/* Dark institutional base */
 body {
-  @apply bg-white text-gray-900 dark:bg-gray-950 dark:text-gray-100;
+  background-color: #0a0f1e;
+  color: #e2e8f0;
   width: 100vw;
   overflow-x: hidden;
-  font-family: "Inter", sans-serif;
+  font-family: "Inter", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #0a0f1e;
+}
+::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}
+
+/* Selection */
+::selection {
+  background: rgba(201, 168, 76, 0.3);
+  color: #f1f5f9;
+}
+
+/* Quill editor overrides for dark theme */
 .ql-container {
   border: none !important;
 }
-
-/* Constrain all images inside the Quill editor */
-.ql-editor img {
-  display: block;
-  max-width: 720px; /* set your fixed width */
-  width: 100%;
-  height: auto;
-  margin: 1rem auto; /* centered + spacing */
-}
-
 .ql-toolbar {
   border: none !important;
+  background: #111827;
+  border-radius: 0.75rem 0.75rem 0 0;
+}
+.ql-toolbar .ql-stroke {
+  stroke: #94a3b8 !important;
+}
+.ql-toolbar .ql-fill {
+  fill: #94a3b8 !important;
+}
+.ql-toolbar .ql-picker-label {
+  color: #94a3b8 !important;
+}
+.ql-editor {
+  background: #111827;
+  color: #e2e8f0;
+  border-radius: 0 0 0.75rem 0.75rem;
+}
+.ql-editor img {
+  display: block;
+  max-width: 720px;
+  width: 100%;
+  height: auto;
+  margin: 1rem auto;
+}
+.ql-editor.ql-blank::before {
+  color: #475569 !important;
 }
 
-/* Viewer styles for Quill-formatted HTML */
-.post-content .ql-align-center {
-  text-align: center;
-}
-.post-content .ql-align-right {
-  text-align: right;
-}
-.post-content .ql-align-justify {
-  text-align: justify;
-}
+/* Post content viewer */
+.post-content .ql-align-center { text-align: center; }
+.post-content .ql-align-right { text-align: right; }
+.post-content .ql-align-justify { text-align: justify; }
 
 /* Indents (LTR) */
-.post-content .ql-indent-1 {
-  padding-left: 3em;
-}
-.post-content .ql-indent-2 {
-  padding-left: 6em;
-}
-.post-content .ql-indent-3 {
-  padding-left: 9em;
-}
-.post-content .ql-indent-4 {
-  padding-left: 12em;
-}
-.post-content .ql-indent-5 {
-  padding-left: 15em;
-}
-.post-content .ql-indent-6 {
-  padding-left: 18em;
-}
-.post-content .ql-indent-7 {
-  padding-left: 21em;
-}
-.post-content .ql-indent-8 {
-  padding-left: 24em;
-}
-.post-content .ql-indent-9 {
-  padding-left: 27em;
-}
+.post-content .ql-indent-1 { padding-left: 3em; }
+.post-content .ql-indent-2 { padding-left: 6em; }
+.post-content .ql-indent-3 { padding-left: 9em; }
+.post-content .ql-indent-4 { padding-left: 12em; }
+.post-content .ql-indent-5 { padding-left: 15em; }
+.post-content .ql-indent-6 { padding-left: 18em; }
+.post-content .ql-indent-7 { padding-left: 21em; }
+.post-content .ql-indent-8 { padding-left: 24em; }
+.post-content .ql-indent-9 { padding-left: 27em; }
 
 /* Indents (RTL) */
-.post-content .ql-direction-rtl.ql-align-right {
-  text-align: left;
-}
-.post-content .ql-indent-1.ql-direction-rtl {
-  padding-right: 3em;
-}
-.post-content .ql-indent-2.ql-direction-rtl {
-  padding-right: 6em;
-}
-.post-content .ql-indent-3.ql-direction-rtl {
-  padding-right: 9em;
-}
-.post-content .ql-indent-4.ql-direction-rtl {
-  padding-right: 12em;
-}
-.post-content .ql-indent-5.ql-direction-rtl {
-  padding-right: 15em;
-}
-.post-content .ql-indent-6.ql-direction-rtl {
-  padding-right: 18em;
-}
-.post-content .ql-indent-7.ql-direction-rtl {
-  padding-right: 21em;
-}
-.post-content .ql-indent-8.ql-direction-rtl {
-  padding-right: 24em;
-}
-.post-content .ql-indent-9.ql-direction-rtl {
-  padding-right: 27em;
-}
+.post-content .ql-direction-rtl.ql-align-right { text-align: left; }
+.post-content .ql-indent-1.ql-direction-rtl { padding-right: 3em; }
+.post-content .ql-indent-2.ql-direction-rtl { padding-right: 6em; }
+.post-content .ql-indent-3.ql-direction-rtl { padding-right: 9em; }
+.post-content .ql-indent-4.ql-direction-rtl { padding-right: 12em; }
+.post-content .ql-indent-5.ql-direction-rtl { padding-right: 15em; }
+.post-content .ql-indent-6.ql-direction-rtl { padding-right: 18em; }
+.post-content .ql-indent-7.ql-direction-rtl { padding-right: 21em; }
+.post-content .ql-indent-8.ql-direction-rtl { padding-right: 24em; }
+.post-content .ql-indent-9.ql-direction-rtl { padding-right: 27em; }
 
-/* Lists look tidy */
-.post-content ol {
-  list-style: decimal;
-  padding-left: 1.25rem;
-}
-.post-content ul {
-  list-style: disc;
-  padding-left: 1.25rem;
-}
+/* Lists */
+.post-content ol { list-style: decimal; padding-left: 1.25rem; }
+.post-content ul { list-style: disc; padding-left: 1.25rem; }
 
 /* Blockquotes & code */
 .post-content blockquote {
-  border-left: 4px solid #e5e7eb; /* gray-200 */
+  border-left: 4px solid #c9a84c;
   padding-left: 1rem;
-  color: #6b7280; /* gray-500 */
+  color: #94a3b8;
   margin: 1rem 0;
 }
 .post-content pre {
-  background: #0f172a; /* slate-900-ish */
-  color: #e5e7eb;
+  background: #050a18;
+  color: #e2e8f0;
   padding: 0.75rem 1rem;
   border-radius: 0.5rem;
   overflow-x: auto;
+  border: 1px solid #1e293b;
+}
+.post-content code {
+  background: #1a2236;
+  padding: 0.15rem 0.4rem;
+  border-radius: 0.25rem;
+  font-size: 0.9em;
 }
 
 /* Images inside content */
@@ -130,15 +128,14 @@ body {
   height: auto;
   display: block;
   margin: 1rem auto;
+  border-radius: 0.5rem;
 }
 
-/* LiteYouTubeEmbed – keep the thumbnail, remove the gray fill */
+/* LiteYouTubeEmbed */
 .yt-card .yt-lite {
-  /* IMPORTANT: don't override `background` (that removes the thumbnail) */
-  background-color: transparent !important; /* only color, keep background-image */
-  background-size: cover; /* make thumbnail fill nicely */
+  background-color: transparent !important;
+  background-size: cover;
   background-position: center center;
-
   aspect-ratio: 16/9;
   width: 100%;
   height: auto;
@@ -146,15 +143,32 @@ body {
   border-radius: 12px;
   overflow: hidden;
 }
-
-/* optional: soften or remove the gradient overlay */
 .yt-card .yt-lite::before {
-  /* You can keep a very light overlay, or remove it completely: */
-  /* content: none !important; */
   background: none !important;
 }
-
-/* play button stays centered */
 .yt-card .yt-lite > .lty-playbtn {
   transform: translate(-50%, -50%);
+}
+
+/* Shimmer for dark theme */
+.shimmer {
+  position: relative;
+  overflow: hidden;
+  background-color: #1a2236;
+}
+.shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    rgba(26, 34, 54, 0) 0%,
+    rgba(255, 255, 255, 0.05) 50%,
+    rgba(26, 34, 54, 0) 100%
+  );
+  animation: shimmer-move 1.25s infinite;
+}
+@keyframes shimmer-move {
+  100% { transform: translateX(100%); }
 }

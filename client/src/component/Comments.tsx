@@ -99,13 +99,13 @@ export default function Comments({ postId }: CommentsProps): React.ReactElement 
 
   return (
     <section className="mt-8">
-      <h3 className="text-lg font-semibold mb-4">Comments</h3>
+      <h3 className="text-lg font-semibold mb-4 text-white">Comments</h3>
 
       {/* Write box */}
       <SignedIn>
         <form onSubmit={handleSubmit} className="mb-6">
           {err && (
-            <div className="mb-2 p-2 rounded bg-red-50 text-red-700 text-sm border border-red-200">
+            <div className="mb-2 p-2 rounded bg-red-900/30 text-red-400 text-sm border border-red-800/50">
               {err}
             </div>
           )}
@@ -113,10 +113,10 @@ export default function Comments({ postId }: CommentsProps): React.ReactElement 
             value={body}
             onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setBody(e.target.value)}
             placeholder="Write a comment…"
-            className="w-full bg-white shadow-md p-4 rounded-xl outline-none min-h-[120px]"
+            className="w-full bg-navy-800 border border-white/10 text-slate-300 placeholder-slate-600 shadow-md p-4 rounded-xl outline-none min-h-[120px]"
           />
           <div className="mt-2 flex items-center justify-between">
-            <div className="text-xs text-gray-500">
+            <div className="text-xs text-slate-500">
               Signed in as{" "}
               <span className="font-medium">
                 {user?.fullName || user?.username || user?.primaryEmailAddress?.emailAddress}
@@ -125,7 +125,7 @@ export default function Comments({ postId }: CommentsProps): React.ReactElement 
             <button
               type="submit"
               disabled={submitting || !isLoaded}
-              className="bg-indigo-600 text-white px-4 py-2 rounded-xl disabled:opacity-60 disabled:cursor-not-allowed"
+              className="bg-gold text-navy-900 px-4 py-2 rounded-xl hover:bg-gold-light disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {submitting ? "Posting…" : "Post Comment"}
             </button>
@@ -134,10 +134,10 @@ export default function Comments({ postId }: CommentsProps): React.ReactElement 
       </SignedIn>
 
       <SignedOut>
-        <div className="mb-6 p-4 rounded-xl border bg-white flex items-center justify-between">
-          <span className="text-sm text-gray-700">Sign in to join the discussion.</span>
+        <div className="mb-6 p-4 rounded-xl border border-white/5 bg-surface flex items-center justify-between">
+          <span className="text-sm text-slate-400">Sign in to join the discussion.</span>
           <SignInButton mode="modal">
-            <button className="px-3 py-2 rounded-lg bg-indigo-600 text-white text-sm">
+            <button className="px-3 py-2 rounded-lg bg-gold text-navy-900 text-sm hover:bg-gold-light">
               Sign in
             </button>
           </SignInButton>
@@ -148,22 +148,22 @@ export default function Comments({ postId }: CommentsProps): React.ReactElement 
       {status === "loading" && (
         <div className="space-y-3">
           {[...Array(3)].map((_, i) => (
-            <div key={i} className="h-16 rounded-xl bg-gray-100 animate-pulse" />
+            <div key={i} className="h-16 rounded-xl bg-surface-raised animate-pulse" />
           ))}
         </div>
       )}
 
       {status === "error" && (
-        <p className="text-red-600">Couldn't load comments. Try refreshing.</p>
+        <p className="text-red-400">Couldn't load comments. Try refreshing.</p>
       )}
 
       {status === "ok" && (
         <div className="space-y-4">
           {items.length === 0 ? (
-            <p className="text-gray-600">No comments yet.</p>
+            <p className="text-slate-500">No comments yet.</p>
           ) : (
             items.map((c) => (
-              <div key={c.id} className="flex gap-4 rounded-xl p-4 bg-gray-50">
+              <div key={c.id} className="flex gap-4 rounded-xl p-4 bg-surface border border-white/5">
                 <Image
                   src="/userImg.jpeg"
                   className="w-10 h-10 rounded-full object-cover"
@@ -173,14 +173,14 @@ export default function Comments({ postId }: CommentsProps): React.ReactElement 
                 />
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
-                    <h4 className="font-semibold text-sm text-gray-800">
+                    <h4 className="font-semibold text-sm text-slate-300">
                       {c.author || "anonymous"}
                     </h4>
-                    <span className="text-xs text-gray-400">
+                    <span className="text-xs text-slate-500">
                       {new Date(c.created_at).toLocaleString()}
                     </span>
                   </div>
-                  <p className="mt-1 text-gray-700 text-sm whitespace-pre-wrap">{c.body}</p>
+                  <p className="mt-1 text-slate-400 text-sm whitespace-pre-wrap">{c.body}</p>
                 </div>
               </div>
             ))

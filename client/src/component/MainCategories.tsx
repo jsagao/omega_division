@@ -1,4 +1,3 @@
-// src/component/MainCategories.tsx
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useState, useMemo } from "react";
 
@@ -9,7 +8,7 @@ interface Category {
 
 export default function MainCategories(): React.ReactElement {
   const categories: Category[] = [
-    { name: "All Posts", value: "" }, // -> /posts
+    { name: "All Posts", value: "" },
     { name: "Programming", value: "Programming" },
     { name: "Data Science", value: "Data-science" },
     { name: "Business", value: "Business" },
@@ -33,10 +32,10 @@ export default function MainCategories(): React.ReactElement {
             key={c.name}
             to={to}
             className={[
-              "px-4 py-2 rounded-lg border text-sm md:text-base transition",
+              "px-4 py-2 rounded-lg border text-sm font-mono tracking-wide transition-all",
               isActive
-                ? "bg-indigo-600 text-white border-indigo-600"
-                : "bg-white text-gray-700 border-gray-200 hover:bg-indigo-50",
+                ? "bg-gold/15 text-gold border-gold/30"
+                : "bg-transparent text-slate-400 border-white/10 hover:text-slate-200 hover:border-white/20 hover:bg-white/5",
             ].join(" ")}
           >
             {c.name}
@@ -53,17 +52,15 @@ export default function MainCategories(): React.ReactElement {
   }
 
   return (
-    <div className="bg-gradient-to-r from-indigo-50 to-white p-4 md:p-5 rounded-xl shadow-md border border-gray-100">
+    <div className="p-4 md:p-5 rounded-xl bg-surface border border-white/5">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        {/* Category pills */}
         <div className="flex flex-wrap gap-2">{catPills}</div>
 
-        {/* Search */}
         <form onSubmit={onSearch} className="w-full md:w-auto">
-          <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-full shadow-sm border border-gray-200">
+          <div className="flex items-center gap-2 bg-navy-800 px-3 py-2 rounded-lg border border-white/10">
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              className="w-5 h-5 text-gray-500"
+              className="w-4 h-4 text-slate-500"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -76,12 +73,12 @@ export default function MainCategories(): React.ReactElement {
               value={q}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setQ(e.target.value)}
               type="text"
-              placeholder="Search posts…"
-              className="bg-transparent outline-none text-sm md:w-64"
+              placeholder="Search posts..."
+              className="bg-transparent outline-none text-sm text-slate-300 placeholder-slate-600 md:w-48"
             />
             <button
               type="submit"
-              className="text-sm rounded-full bg-indigo-600 px-3 py-1.5 text-white hover:bg-indigo-500"
+              className="text-sm rounded-md bg-gold/15 px-3 py-1 text-gold hover:bg-gold/25 transition-colors font-mono"
             >
               Search
             </button>

@@ -180,12 +180,12 @@ function SeriesNav({ series, currentId }: SeriesNavProps): React.ReactElement | 
     : null;
 
   return (
-    <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-      <h3 className="text-base font-semibold text-gray-800">This post is part of a series</h3>
+    <section className="rounded-xl border border-white/10 bg-surface p-4 shadow-sm">
+      <h3 className="text-base font-semibold text-white">This post is part of a series</h3>
 
       {series.series_key && (
-        <p className="mt-1 text-sm text-gray-600">
-          <span className="font-medium">Series:</span> {series.series_key}
+        <p className="mt-1 text-sm text-slate-400">
+          <span className="font-medium text-gold">Series:</span> {series.series_key}
         </p>
       )}
 
@@ -201,8 +201,8 @@ function SeriesNav({ series, currentId }: SeriesNavProps): React.ReactElement | 
               className={[
                 "text-xs sm:text-sm px-3 py-1.5 rounded-full border transition",
                 isCurrent
-                  ? "bg-indigo-600 text-white border-indigo-600"
-                  : "bg-white text-gray-700 border-gray-200 hover:bg-indigo-50",
+                  ? "bg-gold text-navy-900 border-gold font-medium"
+                  : "bg-surface-raised text-slate-300 border-white/10 hover:bg-gold/10 hover:text-gold",
               ].join(" ")}
             >
               {label}
@@ -216,7 +216,7 @@ function SeriesNav({ series, currentId }: SeriesNavProps): React.ReactElement | 
         {prev ? (
           <Link
             to={`/posts/${prev.id}`}
-            className="text-sm rounded-lg border px-3 py-1.5 hover:bg-gray-50"
+            className="text-sm rounded-lg border border-white/10 px-3 py-1.5 text-slate-300 hover:bg-surface-raised"
             title="Previous in series"
           >
             {/* simple inline arrow, no extra deps */}
@@ -226,7 +226,7 @@ function SeriesNav({ series, currentId }: SeriesNavProps): React.ReactElement | 
         ) : (
           <button
             disabled
-            className="text-sm rounded-lg border px-3 py-1.5 opacity-50"
+            className="text-sm rounded-lg border border-white/5 px-3 py-1.5 opacity-50 text-slate-500"
             title="No previous"
           >
             <span aria-hidden>←</span> Prev
@@ -235,7 +235,7 @@ function SeriesNav({ series, currentId }: SeriesNavProps): React.ReactElement | 
         {next ? (
           <Link
             to={`/posts/${next.id}`}
-            className="text-sm rounded-lg border px-3 py-1.5 hover:bg-gray-50"
+            className="text-sm rounded-lg border border-white/10 px-3 py-1.5 text-slate-300 hover:bg-surface-raised"
             title="Next in series"
           >
             Next{typeof next.part === "number" ? ` (Part ${next.part})` : ""}{" "}
@@ -244,7 +244,7 @@ function SeriesNav({ series, currentId }: SeriesNavProps): React.ReactElement | 
         ) : (
           <button
             disabled
-            className="text-sm rounded-lg border px-3 py-1.5 opacity-50"
+            className="text-sm rounded-lg border border-white/5 px-3 py-1.5 opacity-50 text-slate-500"
             title="No next"
           >
             Next <span aria-hidden>→</span>
@@ -407,17 +407,17 @@ export default function PrimarySinglePost(): React.ReactElement {
   if (status === "loading") {
     return (
       <div className="mx-auto max-w-[1100px] px-4 py-8">
-        <div className="h-6 w-40 bg-gray-200 rounded animate-pulse mb-4" />
-        <div className="h-8 w-3/4 bg-gray-200 rounded animate-pulse mb-6" />
-        <div className="h-64 w-full bg-gray-200 rounded animate-pulse" />
+        <div className="h-6 w-40 bg-surface-raised rounded animate-pulse mb-4" />
+        <div className="h-8 w-3/4 bg-surface-raised rounded animate-pulse mb-6" />
+        <div className="h-64 w-full bg-surface-raised rounded animate-pulse" />
       </div>
     );
   }
   if (status === "notfound") {
     return (
       <div className="mx-auto max-w-[1100px] px-4 py-8">
-        <p className="text-gray-700">Post not found.</p>
-        <Link to="/posts" className="text-indigo-700 underline">
+        <p className="text-slate-400">Post not found.</p>
+        <Link to="/posts" className="text-gold hover:text-gold-light underline">
           ← Back to posts
         </Link>
       </div>
@@ -426,8 +426,8 @@ export default function PrimarySinglePost(): React.ReactElement {
   if (status === "error") {
     return (
       <div className="mx-auto max-w-[1100px] px-4 py-8">
-        <p className="text-red-600">Something went wrong loading the post.</p>
-        <Link to="/posts" className="text-indigo-700 underline">
+        <p className="text-red-400">Something went wrong loading the post.</p>
+        <Link to="/posts" className="text-gold hover:text-gold-light underline">
           ← Back to posts
         </Link>
       </div>
@@ -438,15 +438,15 @@ export default function PrimarySinglePost(): React.ReactElement {
     <div className="mx-auto max-w-screen-xl px-4 py-8 flex flex-col gap-10">
       {/* Reader CSS + video layout */}
       <style>{`
-        .post-content { line-height: 1.75; }
+        .post-content { line-height: 1.75; color: #cbd5e1; }
         .post-content p { margin: 0.8rem 0; }
         .post-content blockquote {
-          border-left: 4px solid #e5e7eb; padding-left: 1rem; color: #374151; margin: 1rem 0;
+          border-left: 4px solid rgba(255,255,255,0.1); padding-left: 1rem; color: #94a3b8; margin: 1rem 0;
         }
         .post-content pre, .post-content code {
-          background: #f8fafc; border-radius: 0.5rem; padding: 0.25rem 0.5rem;
+          background: #1a2236; border-radius: 0.5rem; padding: 0.25rem 0.5rem;
           font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-          font-size: 0.95em;
+          font-size: 0.95em; color: #e2e8f0;
         }
         .post-content pre { padding: 0.75rem 1rem; overflow:auto; }
         .post-content ul, .post-content ol { margin: 0.75rem 0 0.75rem 1.5rem; }
@@ -459,9 +459,11 @@ export default function PrimarySinglePost(): React.ReactElement {
         .post-content .ql-indent-6 { margin-left: 9rem; }
         .post-content .ql-indent-7 { margin-left: 10.5rem; }
         .post-content img { max-width: 100%; height: auto; display: block; margin: 1rem auto; }
-        .post-update { background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 0.75rem; padding: 1rem; margin: 1.25rem 0; }
-        .post-update h3 { font-weight: 600; margin-top: 0; margin-bottom: 0.5rem; }
-        .post-update__time { font-weight: 400; color: #6b7280; font-size: 0.9em; }
+        .post-content a { color: #c9a84c; }
+        .post-content a:hover { color: #d4b85a; }
+        .post-update { background: #1a2236; border: 1px solid rgba(255,255,255,0.1); border-radius: 0.75rem; padding: 1rem; margin: 1.25rem 0; }
+        .post-update h3 { font-weight: 600; margin-top: 0; margin-bottom: 0.5rem; color: #fff; }
+        .post-update__time { font-weight: 400; color: #94a3b8; font-size: 0.9em; }
 
         /* video layout */
         .video-grid { display: grid; gap: 1rem; }
@@ -488,34 +490,34 @@ export default function PrimarySinglePost(): React.ReactElement {
       {/* Header + hero */}
       <div className="flex flex-col lg:flex-row gap-8">
         <div className="lg:w-3/5 flex flex-col gap-6">
-          <h1 className="text-xl md:text-3xl xl:text-4xl 2xl:text-5xl font-semibold text-black">
+          <h1 className="text-xl md:text-3xl xl:text-4xl 2xl:text-5xl font-semibold text-white">
             {post!.title}
           </h1>
 
-          <div className="flex flex-wrap items-center gap-2 text-gray-500 text-sm">
+          <div className="flex flex-wrap items-center gap-2 text-slate-400 text-sm">
             <span>By</span>
-            <Link to="/about" className="text-indigo-700 font-semibold hover:underline">
+            <Link to="/about" className="text-gold font-semibold hover:text-gold-light hover:underline">
               {post!.author || "anonymous"}
             </Link>
-            <span className="text-gray-300">|</span>
+            <span className="text-slate-600">|</span>
             <Link
               to={`/posts?cat=${encodeURIComponent(post!.category || "general")}`}
-              className="text-indigo-700 hover:underline"
+              className="text-gold hover:text-gold-light hover:underline"
             >
               {post!.category || "general"}
             </Link>
             {typeof post!.series_part === "number" && post!.series_key && (
               <>
-                <span className="text-gray-300">|</span>
-                <span className="text-gray-600">
-                  Series: <span className="font-medium">{post!.series_key}</span> (Part{" "}
+                <span className="text-slate-600">|</span>
+                <span className="text-slate-400">
+                  Series: <span className="font-medium text-gold">{post!.series_key}</span> (Part{" "}
                   {post!.series_part})
                 </span>
               </>
             )}
           </div>
 
-          <p className="text-gray-600 leading-relaxed">{post!.excerpt || ""}</p>
+          <p className="text-slate-400 leading-relaxed">{post!.excerpt || ""}</p>
         </div>
 
         {/* Hero image */}
@@ -525,7 +527,7 @@ export default function PrimarySinglePost(): React.ReactElement {
             alt={post!.title || "Post Image"}
             w="800"
             h="600"
-            className="rounded-xl w-full h-auto object-cover"
+            className="rounded-xl w-full h-auto object-cover border border-white/10"
           />
         </div>
       </div>
@@ -548,7 +550,7 @@ export default function PrimarySinglePost(): React.ReactElement {
           {/* Videos */}
           {Array.isArray(post!.video_urls) && post!.video_urls.length > 0 && (
             <section className="flex flex-col gap-3">
-              <h2 className="text-base font-medium text-gray-700">Videos</h2>
+              <h2 className="text-base font-medium text-slate-300">Videos</h2>
               <div className="video-grid">
                 {post!.video_urls.map((raw: string, i: number) => {
                   const url = (raw || "").trim();
@@ -574,7 +576,7 @@ export default function PrimarySinglePost(): React.ReactElement {
                     // keep wrapper for ratio
                     const src = `https://player.vimeo.com/video/${vmId}`;
                     return (
-                      <div key={`vimeo-${i}-${vmId}`} className="player-wrapper bg-black/5">
+                      <div key={`vimeo-${i}-${vmId}`} className="player-wrapper bg-white/5">
                         <iframe
                           src={src}
                           className="react-player"
@@ -596,7 +598,7 @@ export default function PrimarySinglePost(): React.ReactElement {
 
                   if (isDirectVideo(url)) {
                     return (
-                      <div key={`file-${i}`} className="player-wrapper bg-black/5">
+                      <div key={`file-${i}`} className="player-wrapper bg-white/5">
                         <video
                           controls
                           playsInline
@@ -615,11 +617,11 @@ export default function PrimarySinglePost(): React.ReactElement {
                   }
 
                   return (
-                    <div key={`unknown-${i}`} className="rounded-md p-3 bg-gray-50 border">
-                      <p className="text-sm text-gray-600">
+                    <div key={`unknown-${i}`} className="rounded-md p-3 bg-surface border border-white/10">
+                      <p className="text-sm text-slate-400">
                         Unrecognized video link:{" "}
                         <a
-                          className="text-indigo-700 underline break-all"
+                          className="text-gold hover:text-gold-light underline break-all"
                           href={url}
                           target="_blank"
                           rel="noreferrer"
@@ -638,23 +640,23 @@ export default function PrimarySinglePost(): React.ReactElement {
         {/* Sidebar */}
         <aside className="md:w-80 lg:w-50 px-0 md:px-2 lg:px-2">
           <div className="px-4 py-2 h-max sticky top-8 bg-transparent">
-            <h2 className="mb-4 text-sm font-medium">Author</h2>
+            <h2 className="mb-4 text-sm font-medium text-slate-300">Author</h2>
 
             <div className="flex flex-col gap-4">
               <div className="flex items-center gap-4">
                 <Image
                   src={(post?.author_image_url || "").trim() || "/default-avatar.png"}
                   alt={`${post?.author || "anonymous"} avatar`}
-                  className="w-12 h-12 rounded-full object-cover"
+                  className="w-12 h-12 rounded-full object-cover border border-white/10"
                   w="48"
                   h="48"
                 />
-                <Link to="/about" className="text-blue-800 hover:underline">
+                <Link to="/about" className="text-gold hover:text-gold-light hover:underline">
                   {post!.author || "anonymous"}
                 </Link>
               </div>
 
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-slate-500">
                 Passionate writer about {post!.category || "tech"}.
               </p>
 
@@ -679,7 +681,7 @@ export default function PrimarySinglePost(): React.ReactElement {
                 <div className="mt-3">
                   <button
                     onClick={() => setAppendOpen(true)}
-                    className="px-3 py-1.5 text-sm bg-indigo-600 text-white rounded hover:bg-indigo-500"
+                    className="px-3 py-1.5 text-sm bg-gold text-navy-900 rounded hover:bg-gold-light font-medium"
                   >
                     Add Update
                   </button>
@@ -697,33 +699,33 @@ export default function PrimarySinglePost(): React.ReactElement {
               </>
             )}
 
-            <h2 className="mt-8 mb-4 text-sm font-medium">Categories</h2>
+            <h2 className="mt-8 mb-4 text-sm font-medium text-slate-300">Categories</h2>
             <nav className="flex flex-col gap-2 text-sm">
               {/* Use exact category values you use elsewhere */}
-              <Link className="underline" to="/posts">
+              <Link className="text-gold hover:text-gold-light underline" to="/posts">
                 All
               </Link>
-              <Link className="underline" to="/posts?cat=Programming">
+              <Link className="text-gold hover:text-gold-light underline" to="/posts?cat=Programming">
                 Programming
               </Link>
-              <Link className="underline" to="/posts?cat=Development">
+              <Link className="text-gold hover:text-gold-light underline" to="/posts?cat=Development">
                 Development
               </Link>
-              <Link className="underline" to="/posts?cat=Data-science">
+              <Link className="text-gold hover:text-gold-light underline" to="/posts?cat=Data-science">
                 Data Science
               </Link>
-              <Link className="underline" to="/posts?cat=Business">
+              <Link className="text-gold hover:text-gold-light underline" to="/posts?cat=Business">
                 Business
               </Link>
-              <Link className="underline" to="/posts?cat=Technology">
+              <Link className="text-gold hover:text-gold-light underline" to="/posts?cat=Technology">
                 Technology
               </Link>
-              <Link className="underline" to="/posts?cat=Travel">
+              <Link className="text-gold hover:text-gold-light underline" to="/posts?cat=Travel">
                 Travel
               </Link>
             </nav>
 
-            <h2 className="mt-8 mb-4 text-sm font-medium">Search</h2>
+            <h2 className="mt-8 mb-4 text-sm font-medium text-slate-300">Search</h2>
             <Search />
           </div>
         </aside>
@@ -735,11 +737,11 @@ export default function PrimarySinglePost(): React.ReactElement {
       {isAdmin && appendOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div
-            className="absolute inset-0 bg-black/40"
+            className="absolute inset-0 bg-black/60"
             onClick={() => !appending && setAppendOpen(false)}
           />
-          <div className="relative z-10 w-[min(95vw,900px)] max-h-[85vh] overflow-auto rounded-xl bg-white p-4 shadow-xl">
-            <h3 className="text-lg font-semibold mb-3">Add Update</h3>
+          <div className="relative z-10 w-[min(95vw,900px)] max-h-[85vh] overflow-auto rounded-xl bg-surface p-4 shadow-xl border border-white/10">
+            <h3 className="text-lg font-semibold mb-3 text-white">Add Update</h3>
             <ReactQuill
               ref={quillRef}
               theme="snow"
@@ -750,14 +752,14 @@ export default function PrimarySinglePost(): React.ReactElement {
             />
             <div className="mt-2 flex items-center justify-end gap-2">
               <button
-                className="px-3 py-1.5 rounded border text-gray-700 disabled:opacity-60"
+                className="px-3 py-1.5 rounded border border-gold/30 text-gold hover:bg-gold/10 disabled:opacity-60"
                 onClick={() => setAppendOpen(false)}
                 disabled={appending}
               >
                 Cancel
               </button>
               <button
-                className="px-3 py-1.5 rounded bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-60"
+                className="px-3 py-1.5 rounded bg-gold text-navy-900 hover:bg-gold-light disabled:opacity-60 font-medium"
                 onClick={handleAppend}
                 disabled={appending}
               >

@@ -78,12 +78,12 @@ export default function SeriesNav({ series, currentId }: SeriesNavProps): React.
   const current: number = Number(currentId);
 
   return (
-    <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-      <h3 className="text-base font-semibold text-gray-800">This post is part of a series</h3>
+    <section className="rounded-xl border border-white/5 bg-surface p-4 shadow-sm">
+      <h3 className="text-base font-semibold text-white">This post is part of a series</h3>
 
       {series.series_key && (
-        <p className="mt-1 text-sm text-gray-600">
-          <span className="font-medium">Series:</span> {series.series_key}
+        <p className="mt-1 text-sm text-slate-400">
+          <span className="font-medium text-gold">Series:</span> {series.series_key}
         </p>
       )}
 
@@ -99,8 +99,8 @@ export default function SeriesNav({ series, currentId }: SeriesNavProps): React.
               className={[
                 "text-xs sm:text-sm px-3 py-1.5 rounded-full border transition",
                 isCurrent
-                  ? "bg-indigo-600 text-white border-indigo-600"
-                  : "bg-white text-gray-700 border-gray-200 hover:bg-indigo-50",
+                  ? "bg-gold text-navy-900 border-gold"
+                  : "bg-surface-raised text-slate-300 border-white/10 hover:bg-gold/10 hover:text-gold",
               ].join(" ")}
             >
               {label}
@@ -114,12 +114,12 @@ export default function SeriesNav({ series, currentId }: SeriesNavProps): React.
         {prev ? (
           <Link
             to={`/posts/${prev.id}`}
-            className="text-sm rounded-lg border px-3 py-1.5 hover:bg-gray-50"
+            className="text-sm rounded-lg border border-gold/30 text-gold px-3 py-1.5 hover:bg-gold/10"
           >
             ← Prev{typeof prev.part === "number" ? ` (Part ${prev.part})` : ""}
           </Link>
         ) : (
-          <button disabled className="text-sm rounded-lg border px-3 py-1.5 opacity-50">
+          <button disabled className="text-sm rounded-lg border border-white/10 text-slate-500 px-3 py-1.5 opacity-50">
             ← Prev
           </button>
         )}
@@ -127,12 +127,12 @@ export default function SeriesNav({ series, currentId }: SeriesNavProps): React.
         {next ? (
           <Link
             to={`/posts/${next.id}`}
-            className="text-sm rounded-lg border px-3 py-1.5 hover:bg-gray-50"
+            className="text-sm rounded-lg border border-gold/30 text-gold px-3 py-1.5 hover:bg-gold/10"
           >
             Next{typeof next.part === "number" ? ` (Part ${next.part})` : ""} →
           </Link>
         ) : (
-          <button disabled className="text-sm rounded-lg border px-3 py-1.5 opacity-50">
+          <button disabled className="text-sm rounded-lg border border-white/10 text-slate-500 px-3 py-1.5 opacity-50">
             Next →
           </button>
         )}

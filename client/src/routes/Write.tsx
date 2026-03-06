@@ -434,15 +434,15 @@ export default function Write(): React.ReactElement {
   // submit
   if (!isLoaded) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-100">
-        <p className="text-lg text-gray-700">Loading...</p>
+      <div className="flex items-center justify-center min-h-screen bg-navy-900">
+        <p className="text-lg text-slate-400">Loading...</p>
       </div>
     );
   }
   if (!isSignedIn) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-100">
-        <p className="text-lg text-gray-700">You need to be signed in to write a post.</p>
+      <div className="flex items-center justify-center min-h-screen bg-navy-900">
+        <p className="text-lg text-slate-400">You need to be signed in to write a post.</p>
       </div>
     );
   }
@@ -525,9 +525,24 @@ export default function Write(): React.ReactElement {
 
   return (
     <div className="h-[calc(100vh-64px)] md:h-[calc(100vh-80px)] flex flex-col gap-6 m-11">
-      {/* Quill & video preview styles + LiteYouTube polish */}
+      {/* Quill dark theme overrides + video preview styles + LiteYouTube polish */}
       <style>{`
         .ql-editor img{max-width:100%;height:auto;display:block;margin:1rem auto;}
+
+        /* Dark Quill overrides */
+        .ql-toolbar.ql-snow { border-color: rgba(255,255,255,0.1) !important; background: #111827; }
+        .ql-toolbar .ql-stroke { stroke: #94a3b8 !important; }
+        .ql-toolbar .ql-fill { fill: #94a3b8 !important; }
+        .ql-toolbar .ql-picker-label { color: #94a3b8 !important; }
+        .ql-toolbar .ql-picker-options { background: #1a2236 !important; border-color: rgba(255,255,255,0.1) !important; }
+        .ql-toolbar .ql-picker-item { color: #cbd5e1 !important; }
+        .ql-toolbar button:hover .ql-stroke { stroke: #c9a84c !important; }
+        .ql-toolbar button:hover .ql-fill { fill: #c9a84c !important; }
+        .ql-toolbar button.ql-active .ql-stroke { stroke: #c9a84c !important; }
+        .ql-toolbar button.ql-active .ql-fill { fill: #c9a84c !important; }
+        .ql-container.ql-snow { border-color: rgba(255,255,255,0.1) !important; }
+        .ql-editor { color: #cbd5e1; }
+        .ql-editor.ql-blank::before { color: #475569 !important; }
 
         .video-grid { display: grid; gap: 1rem; }
         @media (min-width: 768px) { .video-grid { grid-template-columns: 1fr 1fr; } }
@@ -549,10 +564,10 @@ export default function Write(): React.ReactElement {
         .yt-card .yt-lite > img{ width:100%; height:100%; object-fit: cover; display:block; }
       `}</style>
 
-      <h1 className="text-xl font-light">Create a New Post</h1>
+      <h1 className="text-xl font-light text-white">Create a New Post</h1>
 
       {errorMsg && (
-        <div className="p-3 rounded-md bg-red-50 text-red-700 text-sm border border-red-200">
+        <div className="p-3 rounded-md bg-red-900/20 text-red-400 text-sm border border-red-800/30">
           {errorMsg}
         </div>
       )}
@@ -563,7 +578,7 @@ export default function Write(): React.ReactElement {
           <button
             type="button"
             onClick={pickCover}
-            className="w-max p-2 shadow-md rounded-xl text-sm text-gray-700 bg-white border"
+            className="w-max p-2 rounded-xl text-sm border border-gold/30 text-gold hover:bg-gold/10"
             disabled={coverUploading}
           >
             {coverUploading ? "Uploading…" : coverUrl ? "Change Cover Image" : "Add a Cover Image"}
@@ -574,13 +589,13 @@ export default function Write(): React.ReactElement {
               <img
                 src={coverUrl}
                 alt="Cover preview"
-                className="h-24 w-40 md:h-28 md:w-48 object-cover rounded-lg border cursor-zoom-in"
+                className="h-24 w-40 md:h-28 md:w-48 object-cover rounded-lg border border-white/10 cursor-zoom-in"
                 onClick={() => setShowCoverPreview(true)}
               />
               <button
                 type="button"
                 onClick={removeCover}
-                className="text-xs px-2 py-1 rounded border hover:bg-gray-50"
+                className="text-xs px-2 py-1 rounded border border-white/10 text-slate-400 hover:bg-surface-raised"
                 disabled={coverUploading}
                 title="Remove cover (image will be destroyed if the post is deleted)"
               >
@@ -622,21 +637,21 @@ export default function Write(): React.ReactElement {
             value={title}
             maxLength={TITLE_MAX}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleTitleChange(e.target.value)}
-            className="text-4xl font-semibold bg-transparent outline-none w-full"
+            className="text-4xl font-semibold bg-transparent outline-none w-full text-white placeholder-slate-600"
           />
-          <div className="mt-1 text-xs text-gray-500">
+          <div className="mt-1 text-xs text-slate-500">
             {titleLen}/{TITLE_MAX}
           </div>
         </div>
 
         {/* Category */}
         <div className="flex items-center gap-4">
-          <label className="text-gray-500 font-medium">Category:</label>
+          <label className="text-slate-400 font-medium">Category:</label>
           <select
             name="cat"
             value={category}
             onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setCategory(e.target.value)}
-            className="p-2 rounded-xl bg-white shadow-md"
+            className="p-2 rounded-xl bg-navy-800 border border-white/10 text-slate-300"
           >
             {categories.map((c) => (
               <option key={c.value} value={c.value}>
@@ -654,15 +669,15 @@ export default function Write(): React.ReactElement {
             value={excerpt}
             maxLength={EXCERPT_MAX}
             onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handleExcerptChange(e.target.value)}
-            className="w-full bg-white shadow-md p-4 rounded-xl outline-none min-h-[260px] text-lg leading-relaxed"
+            className="w-full bg-navy-800 border border-white/10 p-4 rounded-xl outline-none min-h-[260px] text-lg leading-relaxed text-slate-300 placeholder-slate-600"
             rows={6}
           />
-          <div className="mt-1 text-xs text-gray-500">
+          <div className="mt-1 text-xs text-slate-500">
             {excerptLen}/{EXCERPT_MAX}
           </div>
-          <div className="mt-2 text-xs text-gray-500">
+          <div className="mt-2 text-xs text-slate-500">
             Preview:&nbsp;
-            <span className="italic">
+            <span className="italic text-slate-400">
               {derivedPreview || "Start typing above or in the editor…"}
             </span>
           </div>
@@ -674,11 +689,11 @@ export default function Write(): React.ReactElement {
             ref={setRQ}
             theme="snow"
             modules={quillModules}
-            className="flex-1 p-2 rounded-xl bg-white shadow-md min-h-[520px] text-base md:text-lg"
+            className="flex-1 p-2 rounded-xl bg-navy-800 border border-white/10 min-h-[520px] text-base md:text-lg"
             value={content}
             onChange={handleQuillChange}
           />
-          <div className="mt-1 text-xs text-gray-500">
+          <div className="mt-1 text-xs text-slate-500">
             {contentLen}/{CONTENT_MAX} (plain text)
           </div>
           <input
@@ -692,7 +707,7 @@ export default function Write(): React.ReactElement {
 
         {/* Video URLs */}
         <div>
-          <label className="text-gray-500 font-medium">Video URLs</label>
+          <label className="text-slate-400 font-medium">Video URLs</label>
           <div className="mt-2 video-grid">
             {videoUrls.map((url, i) => {
               const u = url.trim();
@@ -707,13 +722,13 @@ export default function Write(): React.ReactElement {
                       value={url}
                       onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleVideoChange(i, e.target.value)}
                       placeholder="https://youtube.com/watch?v=…  |  https://vimeo.com/123456789  |  https://.../video.mp4"
-                      className="flex-1 p-2 rounded-xl bg-white shadow-md border"
+                      className="flex-1 p-2 rounded-xl bg-navy-800 border border-white/10 text-slate-300 placeholder-slate-600"
                     />
                     {videoUrls.length > 1 && (
                       <button
                         type="button"
                         onClick={() => removeVideoField(i)}
-                        className="px-2 py-1 rounded border text-red-600"
+                        className="px-2 py-1 rounded border border-red-800/30 text-red-400"
                       >
                         Remove
                       </button>
@@ -753,7 +768,7 @@ export default function Write(): React.ReactElement {
           <button
             type="button"
             onClick={addVideoField}
-            className="mt-2 text-sm text-indigo-700 hover:underline"
+            className="mt-2 text-sm text-gold hover:text-gold-light hover:underline"
           >
             + Add another video
           </button>
@@ -762,34 +777,34 @@ export default function Write(): React.ReactElement {
         {/* Series (optional) */}
         <div className="flex flex-wrap items-end gap-3">
           <div className="flex flex-col">
-            <label className="text-gray-500 text-sm font-medium">Series key</label>
+            <label className="text-slate-400 text-sm font-medium">Series key</label>
             <input
               type="text"
               value={seriesKey}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSeriesKey(e.target.value)}
               placeholder='e.g. "My Journey"'
-              className="p-2 rounded-xl bg-white shadow-md w-64"
+              className="p-2 rounded-xl bg-navy-800 border border-white/10 text-slate-300 placeholder-slate-600 w-64"
             />
           </div>
           <div className="flex flex-col">
-            <label className="text-gray-500 text-sm font-medium">Part #</label>
+            <label className="text-slate-400 text-sm font-medium">Part #</label>
             <input
               type="number"
               min="1"
               value={seriesPart}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSeriesPart(e.target.value)}
               placeholder="1"
-              className="p-2 rounded-xl bg-white shadow-md w-28"
+              className="p-2 rounded-xl bg-navy-800 border border-white/10 text-slate-300 placeholder-slate-600 w-28"
             />
           </div>
-          <p className="text-xs text-gray-500">Leave empty if this post is not part of a series.</p>
+          <p className="text-xs text-slate-500">Leave empty if this post is not part of a series.</p>
         </div>
 
         {/* Featured controls */}
         <fieldset className="flex flex-wrap gap-4 items-center">
-          <legend className="text-gray-500 font-medium">Feature:</legend>
+          <legend className="text-slate-400 font-medium">Feature:</legend>
           {["none", "main", "mini", "portfolio"].map((opt) => (
-            <label key={opt} className="flex items-center gap-2 text-sm">
+            <label key={opt} className="flex items-center gap-2 text-sm text-slate-300">
               <input
                 type="radio"
                 value={opt}
@@ -803,7 +818,7 @@ export default function Write(): React.ReactElement {
             type="number"
             min="1"
             placeholder="Rank (optional)"
-            className="p-2 rounded-xl bg-white shadow-md w-36"
+            className="p-2 rounded-xl bg-navy-800 border border-white/10 text-slate-300 placeholder-slate-600 w-36"
             value={featuredRank}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFeaturedRank(e.target.value)}
           />
@@ -812,7 +827,7 @@ export default function Write(): React.ReactElement {
         <button
           type="submit"
           disabled={submitting || overLimits}
-          className="bg-blue-800 disabled:opacity-60 disabled:cursor-not-allowed text-white px-4 py-2 rounded-xl mt-2 font-medium w-max"
+          className="bg-gold disabled:opacity-60 disabled:cursor-not-allowed text-navy-900 px-4 py-2 rounded-xl mt-2 font-medium w-max hover:bg-gold-light"
         >
           {submitting ? "Publishing…" : "Publish"}
         </button>

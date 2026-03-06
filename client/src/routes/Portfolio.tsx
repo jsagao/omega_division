@@ -132,20 +132,20 @@ export default function Portfolio(): React.ReactElement {
 
   if (status === "loading") {
     return (
-      <div className="bg-gray-900 py-24 sm:py-32">
+      <div className="bg-navy-900 py-24 sm:py-32">
         <div className="mx-auto max-w-7xl px-6 lg:px-8">
           <div className="mx-auto max-w-2xl lg:max-w-4xl">
-            <div className="h-8 w-56 bg-gray-800 rounded mb-3 animate-pulse" />
-            <div className="h-5 w-80 bg-gray-800 rounded animate-pulse" />
+            <div className="h-8 w-56 bg-surface-raised rounded mb-3 animate-pulse" />
+            <div className="h-5 w-80 bg-surface-raised rounded animate-pulse" />
             <div className="mt-16 space-y-20 lg:mt-20">
               {[...Array(3)].map((_, i) => (
                 <div key={i} className="flex gap-8">
-                  <div className="relative lg:w-64 h-40 rounded-2xl bg-gray-800 animate-pulse" />
+                  <div className="relative lg:w-64 h-40 rounded-2xl bg-surface-raised animate-pulse" />
                   <div className="flex-1 space-y-3">
-                    <div className="h-4 w-36 bg-gray-800 rounded animate-pulse" />
-                    <div className="h-6 w-3/4 bg-gray-800 rounded animate-pulse" />
-                    <div className="h-4 w-full bg-gray-800 rounded animate-pulse" />
-                    <div className="h-4 w-5/6 bg-gray-800 rounded animate-pulse" />
+                    <div className="h-4 w-36 bg-surface-raised rounded animate-pulse" />
+                    <div className="h-6 w-3/4 bg-surface-raised rounded animate-pulse" />
+                    <div className="h-4 w-full bg-surface-raised rounded animate-pulse" />
+                    <div className="h-4 w-5/6 bg-surface-raised rounded animate-pulse" />
                   </div>
                 </div>
               ))}
@@ -158,10 +158,10 @@ export default function Portfolio(): React.ReactElement {
 
   if (status === "error") {
     return (
-      <div className="bg-gray-900 py-24 sm:py-32">
+      <div className="bg-navy-900 py-24 sm:py-32">
         <div className="mx-auto max-w-7xl px-6 lg:px-8">
-          <p className="text-gray-300">Couldn't load portfolio items.</p>
-          <button className="mt-3 text-indigo-300 underline" onClick={() => location.reload()}>
+          <p className="text-slate-400">Couldn't load portfolio items.</p>
+          <button className="mt-3 text-gold hover:text-gold-light underline" onClick={() => location.reload()}>
             Retry
           </button>
         </div>
@@ -170,13 +170,13 @@ export default function Portfolio(): React.ReactElement {
   }
 
   return (
-    <div className="bg-gray-900 py-24 sm:py-32">
+    <div className="bg-navy-900 py-24 sm:py-32">
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
         <div className="mx-auto max-w-2xl lg:max-w-4xl">
           <h2 className="text-4xl font-semibold tracking-tight text-pretty text-white sm:text-5xl">
             From the blog
           </h2>
-          <p className="mt-2 text-lg/8 text-gray-400">Showing Highlighted Projects from Blog</p>
+          <p className="mt-2 text-lg/8 text-slate-400">Showing Highlighted Projects from Blog</p>
 
           <div className="mt-16 space-y-20 lg:mt-20">
             {mapped.map((post) => (
@@ -186,35 +186,35 @@ export default function Portfolio(): React.ReactElement {
                     <img
                       alt=""
                       src={post.imageUrl}
-                      className="absolute inset-0 size-full rounded-2xl bg-gray-800 object-cover"
+                      className="absolute inset-0 size-full rounded-2xl bg-surface object-cover"
                       loading="lazy"
                     />
                   ) : (
-                    <div className="absolute inset-0 size-full rounded-2xl bg-gray-800" />
+                    <div className="absolute inset-0 size-full rounded-2xl bg-surface" />
                   )}
                   <div className="absolute inset-0 rounded-2xl inset-ring inset-ring-white/10" />
                 </div>
 
                 <div>
                   <div className="flex items-center gap-x-4 text-xs">
-                    <time dateTime={post.datetime} className="text-gray-400">
+                    <time dateTime={post.datetime} className="text-slate-400">
                       {post.date}
                     </time>
                     <a
                       href={post.category.href}
-                      className="relative z-10 rounded-full bg-gray-800/60 px-3 py-1.5 font-medium text-gray-300 hover:bg-gray-800"
+                      className="relative z-10 rounded-full bg-surface-raised/60 px-3 py-1.5 font-medium text-slate-300 hover:bg-surface-raised"
                     >
                       {post.category.title}
                     </a>
                   </div>
 
                   <div className="group relative max-w-xl">
-                    <h3 className="mt-3 text-lg/6 font-semibold text-white group-hover:text-gray-300">
+                    <h3 className="mt-3 text-lg/6 font-semibold text-white group-hover:text-gold">
                       <a href={post.href} className="hover:underline">
                         {post.title}
                       </a>
                     </h3>
-                    <p className="mt-5 text-sm/6 text-gray-400">{post.description}</p>
+                    <p className="mt-5 text-sm/6 text-slate-400">{post.description}</p>
 
                     {/* Admin-only action: remove from portfolio (do not delete post) */}
                     {isAdmin && (
@@ -227,7 +227,7 @@ export default function Portfolio(): React.ReactElement {
                             handleRemoveFromPortfolio(post.id, post.title);
                           }}
                           disabled={workingId === post.id}
-                          className="text-sm px-3 py-1.5 rounded border border-amber-400/40 text-amber-200 hover:bg-amber-500/10 disabled:opacity-60"
+                          className="text-sm px-3 py-1.5 rounded border border-gold/30 text-gold hover:bg-gold/10 disabled:opacity-60"
                           title="Remove this post from the Portfolio list only"
                         >
                           {workingId === post.id ? "Updating…" : "Remove from portfolio"}
@@ -242,14 +242,14 @@ export default function Portfolio(): React.ReactElement {
                         <img
                           alt=""
                           src={post.author.imageUrl}
-                          className="size-10 rounded-full bg-gray-800"
+                          className="size-10 rounded-full bg-surface"
                         />
                       </a>
                       <div className="text-sm/6">
                         <p className="font-semibold text-white">
                           <a href="/about">{post.author.name}</a>
                         </p>
-                        <p className="text-gray-400">{post.author.role}</p>
+                        <p className="text-slate-400">{post.author.role}</p>
                       </div>
                     </div>
                   </div>

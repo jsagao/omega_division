@@ -77,7 +77,7 @@ const products: Product[] = [
 
 export default function Example(): React.ReactElement {
   return (
-    <div className="bg-white">
+    <div className="bg-navy-900">
       <div className="mx-auto max-w-2xl px-4 py-16 sm:px-6 sm:py-24 lg:max-w-7xl lg:px-8">
         <h2 id="products-heading" className="sr-only">
           Products
@@ -89,13 +89,13 @@ export default function Example(): React.ReactElement {
               <img
                 alt={product.imageAlt}
                 src={product.imageSrc}
-                className="aspect-square w-full overflow-hidden rounded-lg object-cover group-hover:opacity-75 sm:aspect-2/3"
+                className="aspect-square w-full overflow-hidden rounded-lg object-cover group-hover:opacity-75 sm:aspect-2/3 border border-white/10"
               />
-              <div className="mt-4 flex items-center justify-between text-base font-medium text-gray-900">
+              <div className="mt-4 flex items-center justify-between text-base font-medium text-white">
                 <h3>{product.name}</h3>
-                <p>{product.price}</p>
+                <p className="text-gold">{product.price}</p>
               </div>
-              <p className="mt-1 text-sm text-gray-500 italic">{product.description}</p>
+              <p className="mt-1 text-sm text-slate-400 italic">{product.description}</p>
             </a>
           ))}
         </div>

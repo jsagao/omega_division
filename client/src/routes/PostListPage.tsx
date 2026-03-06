@@ -8,12 +8,12 @@ export default function PostListPage(): React.ReactElement {
   return (
     <div className="container mx-auto px-4 py-8">
       {/* Header */}
-      <h1 className="mb-8 text-2xl">Development Blog</h1>
+      <h1 className="mb-8 text-2xl text-white">Development Blog</h1>
 
       {/* Mobile toggle button */}
       <button
         onClick={() => setOpen((prev) => !prev)}
-        className="bg-blue-800 text-sm text-white px-4 py-2 rounded-2xl mb-4 md:hidden"
+        className="bg-gold text-sm text-navy-900 px-4 py-2 rounded-2xl mb-4 md:hidden font-medium hover:bg-gold-light"
       >
         {open ? "Close" : "Filter or Search"}
       </button>

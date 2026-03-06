@@ -66,7 +66,7 @@ export default function EditPost(): React.ReactElement {
   if (!isLoaded) {
     return (
       <div className="mx-auto max-w-[1100px] px-4 py-8">
-        <p className="text-gray-700">Loading…</p>
+        <p className="text-slate-400">Loading…</p>
       </div>
     );
   }
@@ -309,17 +309,17 @@ export default function EditPost(): React.ReactElement {
   if (status === "loading") {
     return (
       <div className="mx-auto max-w-[1100px] px-4 py-8">
-        <div className="h-6 w-40 bg-gray-200 rounded animate-pulse mb-4" />
-        <div className="h-8 w-3/4 bg-gray-200 rounded animate-pulse mb-6" />
-        <div className="h-64 w-full bg-gray-200 rounded animate-pulse" />
+        <div className="h-6 w-40 bg-surface-raised rounded animate-pulse mb-4" />
+        <div className="h-8 w-3/4 bg-surface-raised rounded animate-pulse mb-6" />
+        <div className="h-64 w-full bg-surface-raised rounded animate-pulse" />
       </div>
     );
   }
   if (status === "notfound") {
     return (
       <div className="mx-auto max-w-[1100px] px-4 py-8">
-        <p className="text-gray-700">Post not found.</p>
-        <Link to="/posts" className="text-indigo-700 underline">
+        <p className="text-slate-400">Post not found.</p>
+        <Link to="/posts" className="text-gold hover:text-gold-light underline">
           ← Back to posts
         </Link>
       </div>
@@ -328,8 +328,8 @@ export default function EditPost(): React.ReactElement {
   if (status === "error") {
     return (
       <div className="mx-auto max-w-[1100px] px-4 py-8">
-        <p className="text-red-600">Couldn't load this post.</p>
-        <Link to="/posts" className="text-indigo-700 underline">
+        <p className="text-red-400">Couldn't load this post.</p>
+        <Link to="/posts" className="text-gold hover:text-gold-light underline">
           ← Back to posts
         </Link>
       </div>
@@ -338,19 +338,34 @@ export default function EditPost(): React.ReactElement {
 
   return (
     <div className="mx-auto w-full max-w-[1400px] px-8 py-12 flex flex-col gap-10">
-      {/* keep Quill images responsive inside editor */}
-      <style>{`.ql-editor img{max-width:100%;height:auto;display:block;margin:1rem auto;}`}</style>
+      {/* keep Quill images responsive inside editor + dark overrides */}
+      <style>{`
+        .ql-editor img{max-width:100%;height:auto;display:block;margin:1rem auto;}
+        .ql-toolbar.ql-snow { border-color: rgba(255,255,255,0.1) !important; background: #111827; }
+        .ql-toolbar .ql-stroke { stroke: #94a3b8 !important; }
+        .ql-toolbar .ql-fill { fill: #94a3b8 !important; }
+        .ql-toolbar .ql-picker-label { color: #94a3b8 !important; }
+        .ql-toolbar .ql-picker-options { background: #1a2236 !important; border-color: rgba(255,255,255,0.1) !important; }
+        .ql-toolbar .ql-picker-item { color: #cbd5e1 !important; }
+        .ql-toolbar button:hover .ql-stroke { stroke: #c9a84c !important; }
+        .ql-toolbar button:hover .ql-fill { fill: #c9a84c !important; }
+        .ql-toolbar button.ql-active .ql-stroke { stroke: #c9a84c !important; }
+        .ql-toolbar button.ql-active .ql-fill { fill: #c9a84c !important; }
+        .ql-container.ql-snow { border-color: rgba(255,255,255,0.1) !important; }
+        .ql-editor { color: #cbd5e1; }
+        .ql-editor.ql-blank::before { color: #475569 !important; }
+      `}</style>
 
       {/* Header */}
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl md:text-3xl font-light">Edit Post</h1>
-        <Link to={`/posts/${id}`} className="text-indigo-700 hover:underline text-sm">
+        <h1 className="text-2xl md:text-3xl font-light text-white">Edit Post</h1>
+        <Link to={`/posts/${id}`} className="text-gold hover:text-gold-light hover:underline text-sm">
           ← Back to post
         </Link>
       </div>
 
       {errorMsg && (
-        <div className="p-3 rounded-md bg-red-50 text-red-700 text-sm border border-red-200">
+        <div className="p-3 rounded-md bg-red-900/20 text-red-400 text-sm border border-red-800/30">
           {errorMsg}
         </div>
       )}
@@ -361,7 +376,7 @@ export default function EditPost(): React.ReactElement {
           <button
             type="button"
             onClick={pickCover}
-            className="w-max p-2 shadow-md rounded-xl text-sm text-gray-700 bg-white border"
+            className="w-max p-2 rounded-xl text-sm border border-gold/30 text-gold hover:bg-gold/10"
             disabled={coverUploading}
           >
             {coverUploading ? "Uploading…" : coverUrl ? "Change Cover Image" : "Add a Cover Image"}
@@ -372,13 +387,13 @@ export default function EditPost(): React.ReactElement {
               <img
                 src={coverUrl}
                 alt="Cover preview"
-                className="h-24 w-40 md:h-28 md:w-48 object-cover rounded-lg border cursor-zoom-in"
+                className="h-24 w-40 md:h-28 md:w-48 object-cover rounded-lg border border-white/10 cursor-zoom-in"
                 onClick={() => setShowCoverPreview(true)}
               />
               <button
                 type="button"
                 onClick={removeCover}
-                className="text-xs px-2 py-1 rounded border hover:bg-gray-50"
+                className="text-xs px-2 py-1 rounded border border-white/10 text-slate-400 hover:bg-surface-raised"
               >
                 Remove
               </button>
@@ -419,20 +434,20 @@ export default function EditPost(): React.ReactElement {
               value={title}
               maxLength={TITLE_MAX}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => onTitle(e.target.value)}
-              className="w-full text-4xl font-semibold bg-white p-4 shadow-md rounded-xl outline-none"
+              className="w-full text-4xl font-semibold bg-navy-800 border border-white/10 p-4 rounded-xl outline-none text-white placeholder-slate-600"
             />
-            <div className="mt-1 text-xs text-gray-500 text-right">
+            <div className="mt-1 text-xs text-slate-500 text-right">
               {titleLen}/{TITLE_MAX}
             </div>
           </div>
 
           <div className="flex flex-col gap-2">
-            <label className="text-gray-600 text-sm font-medium">Category</label>
+            <label className="text-slate-400 text-sm font-medium">Category</label>
             <select
               name="cat"
               value={category}
               onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setCategory(e.target.value)}
-              className="p-3 rounded-xl bg-white shadow-md"
+              className="p-3 rounded-xl bg-navy-800 border border-white/10 text-slate-300"
             >
               {categories.map((c) => (
                 <option key={c.value} value={c.value}>
@@ -445,42 +460,42 @@ export default function EditPost(): React.ReactElement {
           {/* Series (optional) */}
           <div className="flex flex-wrap items-end gap-3">
             <div className="flex flex-col">
-              <label className="text-gray-600 text-sm font-medium">Series key</label>
+              <label className="text-slate-400 text-sm font-medium">Series key</label>
               <input
                 type="text"
                 value={seriesKey}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSeriesKey(e.target.value)}
                 placeholder='e.g. "My Journey"'
-                className="p-2 rounded-xl bg-white shadow-md w-64"
+                className="p-2 rounded-xl bg-navy-800 border border-white/10 text-slate-300 placeholder-slate-600 w-64"
               />
             </div>
             <div className="flex flex-col">
-              <label className="text-gray-600 text-sm font-medium">Part #</label>
+              <label className="text-slate-400 text-sm font-medium">Part #</label>
               <input
                 type="number"
                 min="1"
                 value={seriesPart}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSeriesPart(e.target.value)}
                 placeholder="1"
-                className="p-2 rounded-xl bg-white shadow-md w-28"
+                className="p-2 rounded-xl bg-navy-800 border border-white/10 text-slate-300 placeholder-slate-600 w-28"
               />
             </div>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-slate-500">
               Leave empty if this post is not part of a series.
             </p>
           </div>
 
           <div className="flex flex-col gap-2">
-            <label className="text-gray-600 text-sm font-medium">Short description (excerpt)</label>
+            <label className="text-slate-400 text-sm font-medium">Short description (excerpt)</label>
             <textarea
               name="excerpt"
               placeholder="A short description shown in lists and previews…"
               value={excerpt}
               maxLength={EXCERPT_MAX}
               onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => onExcerpt(e.target.value)}
-              className="w-full bg-white shadow-md p-4 rounded-xl outline-none min-h-[160px]"
+              className="w-full bg-navy-800 border border-white/10 p-4 rounded-xl outline-none min-h-[160px] text-slate-300 placeholder-slate-600"
             />
-            <div className="text-xs text-gray-500 text-right">
+            <div className="text-xs text-slate-500 text-right">
               {excerptLen}/{EXCERPT_MAX}
             </div>
           </div>
@@ -488,14 +503,14 @@ export default function EditPost(): React.ReactElement {
 
         {/* Editor */}
         <div className="flex flex-col gap-2">
-          <label className="text-gray-600 text-sm font-medium">Body</label>
+          <label className="text-slate-400 text-sm font-medium">Body</label>
           <ReactQuill
             theme="snow"
-            className="w-full p-2 rounded-xl bg-white shadow-md min-h-[420px]"
+            className="w-full p-2 rounded-xl bg-navy-800 border border-white/10 min-h-[420px]"
             value={content}
             onChange={onQuillChange}
           />
-          <div className="mt-1 text-xs text-gray-500 text-right">
+          <div className="mt-1 text-xs text-slate-500 text-right">
             {contentLen}/{CONTENT_MAX} (plain text)
           </div>
         </div>
@@ -505,7 +520,7 @@ export default function EditPost(): React.ReactElement {
           <button
             type="button"
             onClick={pickAuthor}
-            className="w-max p-2 shadow-md rounded-xl text-sm text-gray-700 bg-white border"
+            className="w-max p-2 rounded-xl text-sm border border-gold/30 text-gold hover:bg-gold/10"
             disabled={authorUploading}
             title="Upload/Change author avatar"
           >
@@ -521,12 +536,12 @@ export default function EditPost(): React.ReactElement {
               <img
                 src={authorUrl}
                 alt="Author avatar preview"
-                className="h-16 w-16 object-cover rounded-full border"
+                className="h-16 w-16 object-cover rounded-full border border-white/10"
               />
               <button
                 type="button"
                 onClick={removeAuthor}
-                className="text-xs px-2 py-1 rounded border hover:bg-gray-50"
+                className="text-xs px-2 py-1 rounded border border-white/10 text-slate-400 hover:bg-surface-raised"
               >
                 Remove
               </button>
@@ -544,14 +559,14 @@ export default function EditPost(): React.ReactElement {
 
         {/* Featured (now includes "portfolio") */}
         <fieldset className="flex flex-wrap items-center gap-4">
-          <legend className="text-gray-500 font-medium">Feature:</legend>
+          <legend className="text-slate-400 font-medium">Feature:</legend>
           {[
             { value: "none", label: "None" },
             { value: "main", label: "Main" },
             { value: "mini", label: "Mini" },
             { value: "portfolio", label: "Portfolio" },
           ].map((opt) => (
-            <label key={opt.value} className="flex items-center gap-2 text-sm">
+            <label key={opt.value} className="flex items-center gap-2 text-sm text-slate-300">
               <input
                 type="radio"
                 name="featured_slot"
@@ -566,7 +581,7 @@ export default function EditPost(): React.ReactElement {
             type="number"
             min="1"
             placeholder="Rank (optional)"
-            className="p-2 rounded-xl bg-white shadow-md w-36"
+            className="p-2 rounded-xl bg-navy-800 border border-white/10 text-slate-300 placeholder-slate-600 w-36"
             value={featuredRank}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFeaturedRank(e.target.value)}
           />
@@ -577,13 +592,13 @@ export default function EditPost(): React.ReactElement {
           <button
             type="submit"
             disabled={saving || overLimits}
-            className="bg-indigo-600 disabled:opacity-60 disabled:cursor-not-allowed text-white px-6 py-3 rounded-xl font-medium text-lg"
+            className="bg-gold disabled:opacity-60 disabled:cursor-not-allowed text-navy-900 px-6 py-3 rounded-xl font-medium text-lg hover:bg-gold-light"
           >
             {saving ? "Saving…" : "Save Changes"}
           </button>
           <Link
             to={`/posts/${id}`}
-            className="px-6 py-3 rounded-xl border text-lg hover:bg-gray-50"
+            className="px-6 py-3 rounded-xl border border-gold/30 text-gold text-lg hover:bg-gold/10"
           >
             Cancel
           </Link>

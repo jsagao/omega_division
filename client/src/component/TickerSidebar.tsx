@@ -73,20 +73,20 @@ export default function TickerSidebar({
   return (
     <aside
       className={`sticky top-16 h-[calc(100vh-4rem)] overflow-auto border-l
-                  border-gray-200 dark:border-gray-800 p-3 ${className}`}
+                  border-white/5 bg-surface p-3 ${className}`}
     >
       <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-sm font-semibold tracking-wide">Markets</h3>
+        <h3 className="text-sm font-semibold tracking-wide text-white">Markets</h3>
         <button
           onClick={load}
-          className="text-xs px-2 py-1 rounded border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
+          className="text-xs px-2 py-1 rounded border border-gold/30 text-gold hover:bg-gold/10"
         >
           Refresh
         </button>
       </div>
 
       {loading && quotes.length === 0 ? (
-        <div className="text-xs text-gray-500">Loading…</div>
+        <div className="text-xs text-slate-500">Loading…</div>
       ) : (
         <ul className="space-y-2">
           {quotes.map((q) => {
@@ -94,20 +94,20 @@ export default function TickerSidebar({
             return (
               <li
                 key={q.symbol}
-                className="flex items-baseline justify-between gap-2 rounded-lg px-2 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-900"
+                className="flex items-baseline justify-between gap-2 rounded-lg px-2 py-1.5 hover:bg-white/5"
               >
                 <div className="flex min-w-0 flex-col">
-                  <span className="font-mono text-sm truncate">{q.symbol}</span>
-                  <span className="text-[11px] text-gray-500">
+                  <span className="font-mono text-sm truncate text-slate-300">{q.symbol}</span>
+                  <span className="text-[11px] text-slate-500">
                     {q.exchange || q.currency || ""}
                   </span>
                 </div>
                 <div className="text-right">
-                  <div className="font-mono text-sm tabular-nums">
+                  <div className="font-mono text-sm tabular-nums text-white">
                     {q.price?.toLocaleString?.() ?? "—"}
                   </div>
                   <div
-                    className={`text-[11px] font-medium tabular-nums ${up ? "text-emerald-600" : "text-rose-600"}`}
+                    className={`text-[11px] font-medium tabular-nums ${up ? "text-emerald-400" : "text-rose-400"}`}
                   >
                     {q.change?.toFixed?.(2) ?? "—"} ({q.percent?.toFixed?.(2) ?? "—"}%)
                   </div>
