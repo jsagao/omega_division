@@ -15,6 +15,7 @@
     "@cloudinary/url-gen": "^1.21.0",
     "cobe": "^0.6.5",
     "dompurify": "^3.2.6",
+    "lightweight-charts": "^5.1.0",
     "quill": "^2.0.3",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
