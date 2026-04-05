@@ -20,6 +20,7 @@ import GlobeView from "../component/GlobeView";
 import TradingViewChart from "../component/TradingViewChart";
 import SectorHeatmap from "../component/SectorHeatmap";
 import CryptoFearGreed from "../component/CryptoFearGreed";
+import CoinGeckoCoinList from "../component/CoinGeckoCoinList";
 import MacroIndicators from "../component/MacroIndicators";
 import VolatilitySurface from "../component/VolatilitySurface";
 import { CityProvider } from "../context/CityContext";
@@ -663,6 +664,9 @@ const HomePage: React.FC = () => {
             </SidePanel>
             <SidePanel>
               <SectorHeatmap />
+            </SidePanel>
+            <SidePanel>
+              <CoinGeckoCoinList />
             </SidePanel>
             <SidePanel>
               <CryptoFearGreed />
