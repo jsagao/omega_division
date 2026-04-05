@@ -20,7 +20,7 @@ const CoinGeckoCoinList: React.FC = () => {
       const widget = document.createElement("gecko-coin-list-widget");
       widget.setAttribute("locale", "en");
       widget.setAttribute("outlined", "true");
-      widget.setAttribute("coin-ids", "ripple,bitcoin,world-liberty-financial");
+      widget.setAttribute("coin-ids", "ripple,bitcoin,world-liberty-financial,solana,ethereum,monero");
       widget.setAttribute("initial-currency", "usd");
       el.appendChild(widget);
     }
